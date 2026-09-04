@@ -96,6 +96,20 @@
 #ef-wl input.ef-invalid{
   border-color:#a8463c;box-shadow:0 0 0 1px rgba(168,70,60,.4);
 }
+#ef-wl .ef-invalid-group .ef-label{color:#FFD7CF;}
+
+/* Radios (eligibility gate) */
+#ef-wl .ef-radio{
+  display:flex;align-items:flex-start;gap:12px;
+  font-size:18px;cursor:pointer;margin:0 0 12px;line-height:1.4;color:var(--paper);text-shadow:var(--on-photo-shadow);
+}
+#ef-wl .ef-radio input{
+  appearance:none;-webkit-appearance:none;
+  flex:0 0 auto;width:22px;height:22px;margin-top:1px;border-radius:50%;
+  border:1.5px solid rgba(255,255,255,.75);background:transparent;cursor:pointer;
+  transition:all .15s ease;
+}
+#ef-wl .ef-radio input:checked{background:var(--paper);border-color:var(--paper);box-shadow:inset 0 0 0 4px transparent;}
 
 /* Honeypot */
 #ef-wl .ef-hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;}
@@ -148,6 +162,12 @@
 
     <form id="ef-form" novalidate autocomplete="on" hidden>
 
+      <div class="ef-field">
+        <span class="ef-label">Are you a woman? <em>(required)</em></span>
+        <label class="ef-radio"><input type="radio" name="is_woman" value="Yes" required><span>Yes</span></label>
+        <label class="ef-radio"><input type="radio" name="is_woman" value="No"><span>No</span></label>
+      </div>
+
       <div class="ef-grid-2">
         <label class="ef-field">
           <span class="ef-label">First Name <em>(required)</em></span>
@@ -188,6 +208,10 @@
       <p class="ef-intro">You will be the first to know the moment the next Earth &amp; Flesh opens. Keep an eye on your inbox, something beautiful is on the&nbsp;way. &#x1F90E;</p>
     </div>
 
+    <div class="ef-success" id="ef-exit" hidden>
+      <p class="ef-intro" id="ef-exit-message"></p>
+    </div>
+
   </div>
 </div>
 
@@ -207,16 +231,21 @@
   var subBtn  = document.getElementById("ef-submit");
   var errEl   = document.getElementById("ef-error");
   var okEl    = document.getElementById("ef-success");
+  var exitEl  = document.getElementById("ef-exit");
   var stageId = "complete";
+  var exitCfg = null;
 
-  // Field labels/copy for this form are simple enough (4 standard fields)
-  // that the static markup above is used directly. We still confirm the
-  // config exists before showing the form, so a KV outage fails loudly
-  // instead of silently posting to a form Kerry may have reconfigured.
+  // Field labels/copy for this form are simple enough (mostly standard
+  // fields) that the static markup above is used directly. We still confirm
+  // the config exists before showing the form, so a KV outage fails loudly
+  // instead of silently posting to a form Kerry may have reconfigured. The
+  // eligibility gate ("Are you a woman?") IS read from config, so the tag
+  // and disqualification message stay editable from the admin.
   fetch(CONFIG.WORKER_BASE + "/config?form=" + CONFIG.FORM_KEY)
     .then(function(r){ if(!r.ok) throw new Error("config fetch failed"); return r.json(); })
     .then(function(cfg){
       stageId = cfg.stages[0].id;
+      exitCfg = cfg.stages[0].exit || null;
       loadingEl.hidden = true;
       form.hidden = false;
     })
@@ -231,10 +260,17 @@
 
   function validate(){
     var ok = true;
-    var fields = form.querySelectorAll("input[required]");
     Array.prototype.forEach.call(form.querySelectorAll(".ef-invalid"), function(e){
       e.classList.remove("ef-invalid");
     });
+    Array.prototype.forEach.call(form.querySelectorAll(".ef-invalid-group"), function(e){
+      e.classList.remove("ef-invalid-group");
+    });
+    if(!form.querySelector("input[name=is_woman]:checked")){
+      ok = false;
+      form.querySelector(".ef-field").classList.add("ef-invalid-group");
+    }
+    var fields = form.querySelectorAll("input[required]:not([type=radio])");
     Array.prototype.forEach.call(fields, function(f){
       var v = String(f.value).trim();
       if(!v){ ok = false; f.classList.add("ef-invalid"); return; }
@@ -259,6 +295,7 @@
 
     var fd = new FormData(form);
     var payload = {
+      is_woman:        (fd.get("is_woman")   || "").trim(),
       firstName:       (fd.get("first_name") || "").trim(),
       lastName:        (fd.get("last_name")  || "").trim(),
       email:           (fd.get("email")      || "").trim(),
@@ -275,9 +312,14 @@
       body: JSON.stringify(payload)
     })
     .then(function(r){ if(!r.ok) throw new Error("bad status " + r.status); return r.json(); })
-    .then(function(){
+    .then(function(res){
       form.hidden = true;
-      okEl.hidden = false;
+      if(res && res.exited){
+        document.getElementById("ef-exit-message").textContent = res.message || (exitCfg && exitCfg.message) || "";
+        exitEl.hidden = false;
+      } else {
+        okEl.hidden = false;
+      }
       root.scrollIntoView({behavior:"smooth", block:"start"});
     })
     .catch(function(){

@@ -231,6 +231,11 @@
       <p class="ef-intro">You will receive an email within 3 business days with next steps. We are honored you are here.</p>
     </div>
 
+    <!-- Eligibility exit (e.g. "Are you a woman?" answered No) -->
+    <div class="ef-success" id="ef-exit" hidden>
+      <p class="ef-intro" id="ef-exit-message"></p>
+    </div>
+
   </div>
 </div>
 
@@ -495,9 +500,32 @@
       postSubmit(startedId, collect()).catch(function(){ /* never block the applicant */ });
     }
 
+    // A stage can carry an eligibility gate ("Are you a woman?"). If the
+    // answer matches the gate's `equals`, tag and stop instead of advancing.
+    function checkExit(stage, data){
+      return stage.exit && data[stage.exit.field] === stage.exit.equals;
+    }
+    function showExit(message){
+      form.hidden = true;
+      document.querySelector("#ef-app .ef-progress").hidden = true;
+      document.getElementById("ef-exit-message").textContent = message;
+      document.getElementById("ef-exit").hidden = false;
+      root.scrollIntoView({behavior:"smooth", block:"start"});
+    }
+
     nextBtn.addEventListener("click", function(){
       if(!validateStep(current)){ errEl.hidden=false; return; }
-      if(current===0){ sendStage1(); }
+      if(current===0){
+        var startedStage = stagesById[startedId];
+        var data = collect();
+        if(checkExit(startedStage, data)){
+          stage1Sent = true;
+          postSubmit(startedId, data).catch(function(){ /* never block */ });
+          showExit(startedStage.exit.message);
+          return;
+        }
+        sendStage1();
+      }
       if(current < total-1){ showStep(current+1); }
     });
     backBtn.addEventListener("click", function(){ if(current>0) showStep(current-1); });

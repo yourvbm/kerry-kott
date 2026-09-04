@@ -193,11 +193,25 @@ async function handleSubmit(request, env, cors, formKey) {
   const contactId = (await up.json()).contact?.id;
   if (!contactId) return json({ error: "No contact id" }, 502, cors);
 
-  // Add the stage tag (this is what fires her workflow). NEVER put `tags`
+  // A stage can carry an `exit` gate (e.g. an eligibility question) — if the
+  // submitted answer matches, apply the exit tag(s) INSTEAD of the stage's
+  // normal tag/removeTags and tell the client to stop (not advance/succeed).
+  // Never both: someone who's screened out never gets the stage's own tag.
+  if (stage.exit && d[stage.exit.field] === stage.exit.equals) {
+    const exitTags = Array.isArray(stage.exit.tag) ? stage.exit.tag : [stage.exit.tag];
+    const tagRes = await fetch(`${BASE}/contacts/${contactId}/tags`, {
+      method: "POST", headers, body: JSON.stringify({ tags: exitTags }),
+    });
+    if (!tagRes.ok) return json({ error: "Tag failed", detail: await tagRes.text() }, 502, cors);
+    return json({ ok: true, contactId, exited: true, message: stage.exit.message }, 200, cors);
+  }
+
+  // Add the stage tag(s) (this is what fires her workflow). NEVER put `tags`
   // in the upsert body above — see the header comment.
   if (stage.tag) {
+    const tags = Array.isArray(stage.tag) ? stage.tag : [stage.tag];
     const tagRes = await fetch(`${BASE}/contacts/${contactId}/tags`, {
-      method: "POST", headers, body: JSON.stringify({ tags: [stage.tag] }),
+      method: "POST", headers, body: JSON.stringify({ tags }),
     });
     if (!tagRes.ok) return json({ error: "Tag failed", detail: await tagRes.text() }, 502, cors);
   }

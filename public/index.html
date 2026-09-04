@@ -99,6 +99,14 @@ body{
 .tag-warning{font-size:12.5px;color:var(--accent);margin:2px 0 14px;}
 .stage-note{font-size:13.5px;font-style:italic;color:var(--muted);margin:0 0 18px;}
 
+.exit-box{
+  background:#fdf1ef;border:1.5px solid #e8c9c2;border-radius:10px;
+  padding:14px 16px;margin:2px 0 18px;
+}
+.exit-title{font-size:13px;font-weight:600;color:var(--accent);margin-bottom:10px;}
+.exit-box .stage-row{margin-bottom:10px;}
+.exit-box .stage-row:last-child{margin-bottom:0;}
+
 .field-list{display:flex;flex-direction:column;gap:10px;margin-bottom:14px;}
 .field-row{
   border:1px solid var(--border);border-radius:10px;padding:12px 14px;background:#FBF9F6;
@@ -369,14 +377,30 @@ body{
     }
   }
 
+  function tagsToText(t){ return Array.isArray(t) ? t.join(", ") : (t || ""); }
+  function textToTags(s){
+    var parts = String(s||"").split(",").map(function(x){ return x.trim(); }).filter(Boolean);
+    if(parts.length <= 1) return parts[0] || "";
+    return parts;
+  }
+
   function renderStage(formKey, cfg, stage, sIdx){
     var html = '<div class="stage-card" data-stage-idx="'+sIdx+'">';
     html += '<h2>Stage: '+esc(stage.id)+'</h2>';
-    html += '<div class="stage-row"><label>GHL Tag</label>'
-      + '<input type="text" class="tag-input" data-stage-idx="'+sIdx+'" value="'+esc(stage.tag)+'"></div>';
+    html += '<div class="stage-row"><label>GHL Tag'+(Array.isArray(stage.tag)?' (comma-separated — more than one tag applies)':'')+'</label>'
+      + '<input type="text" class="tag-input" data-stage-idx="'+sIdx+'" value="'+esc(tagsToText(stage.tag))+'"></div>';
     html += '<p class="tag-warning">Must exactly match what a GHL workflow trigger is watching for — a typo silently breaks the automation without breaking the form.</p>';
     if(stage.note){
       html += '<p class="stage-note">'+esc(stage.note)+'</p>';
+    }
+    if(stage.exit){
+      html += '<div class="exit-box">';
+      html += '<div class="exit-title">Eligibility gate — when "'+esc(stage.exit.field)+'" = "'+esc(stage.exit.equals)+'"</div>';
+      html += '<div class="stage-row"><label>Tag applied instead (does not continue)</label>'
+        + '<input type="text" class="exit-tag-input" data-stage-idx="'+sIdx+'" value="'+esc(tagsToText(stage.exit.tag))+'"></div>';
+      html += '<div class="stage-row"><label>Message shown to them</label>'
+        + '<input type="text" class="exit-msg-input" data-stage-idx="'+sIdx+'" value="'+esc(stage.exit.message)+'"></div>';
+      html += '</div>';
     }
     html += '<div class="field-list">';
     stage.fields.forEach(function(field, fIdx){
@@ -476,7 +500,20 @@ body{
     Array.prototype.forEach.call(panelEl.querySelectorAll(".tag-input"), function(inp){
       inp.addEventListener("input", function(){
         var sIdx = +inp.getAttribute("data-stage-idx");
-        cfg.stages[sIdx].tag = inp.value;
+        cfg.stages[sIdx].tag = textToTags(inp.value);
+      });
+    });
+    // Eligibility-gate exit tag/message edits
+    Array.prototype.forEach.call(panelEl.querySelectorAll(".exit-tag-input"), function(inp){
+      inp.addEventListener("input", function(){
+        var sIdx = +inp.getAttribute("data-stage-idx");
+        cfg.stages[sIdx].exit.tag = textToTags(inp.value);
+      });
+    });
+    Array.prototype.forEach.call(panelEl.querySelectorAll(".exit-msg-input"), function(inp){
+      inp.addEventListener("input", function(){
+        var sIdx = +inp.getAttribute("data-stage-idx");
+        cfg.stages[sIdx].exit.message = inp.value;
       });
     });
 
