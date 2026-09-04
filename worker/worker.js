@@ -391,8 +391,11 @@ async function handleDuplicateForm(request, env, cors) {
   while (registry.some((f) => f.key === newKey)) { newKey = `${slugify(newLabel)}-${suffix}`; suffix++; }
 
   // Deep clone via JSON round-trip (config is plain data, no functions).
+  // NOTE: `newLabel` names the ADMIN tab (registry.label) only — it never
+  // touches `title` (also the visible heading on the live page, if any).
+  // That stays whatever the source form had; renaming a form in the admin
+  // must never change what its live page says.
   const newCfg = JSON.parse(JSON.stringify(sourceCfg));
-  newCfg.title = newLabel;
   newCfg.source = newLabel;
   // Strip GHL field bindings on every non-standard field — the clone is a
   // separate form and must never write into the SAME GHL custom field as
@@ -412,6 +415,27 @@ async function handleDuplicateForm(request, env, cors) {
   await saveRegistry(env, registry);
 
   return json({ ok: true, key: newKey, label: newLabel }, 200, cors);
+}
+
+// ---------- /admin/delete-form ----------
+
+async function handleDeleteForm(request, env, cors) {
+  if (!requireAdmin(request, env)) return json({ error: "Unauthorized" }, 401, cors);
+  let d;
+  try { d = await request.json(); }
+  catch { return json({ error: "Bad JSON" }, 400, cors); }
+
+  const key = d.key;
+  if (!key) return json({ error: "key is required" }, 400, cors);
+
+  const registry = await loadRegistry(env);
+  if (!registry.some((f) => f.key === key)) return json({ error: "Unknown form" }, 400, cors);
+
+  const next = registry.filter((f) => f.key !== key);
+  await saveRegistry(env, next);
+  await env.CONFIG.delete(`config:${key}`);
+
+  return json({ ok: true }, 200, cors);
 }
 
 // ---------- router ----------
@@ -470,6 +494,11 @@ export default {
     // POST /admin/duplicate-form — protected
     if (request.method === "POST" && path === "/admin/duplicate-form") {
       return handleDuplicateForm(request, env, cors);
+    }
+
+    // POST /admin/delete-form — protected
+    if (request.method === "POST" && path === "/admin/delete-form") {
+      return handleDeleteForm(request, env, cors);
     }
 
     // ---- Legacy support: bare POST / (or POST /?form=waitlist) with no

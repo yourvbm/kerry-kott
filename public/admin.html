@@ -130,6 +130,36 @@ body{
 }
 .style-reset-btn:hover{border-color:var(--ink);}
 
+/* Delete-form modal */
+.delete-warning{font-size:14.5px;line-height:1.6;color:var(--ink);margin:0 0 18px;}
+#delete-modal .mini{display:block;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.02em;margin-bottom:6px;}
+#delete-confirm-name{color:var(--accent);text-transform:none;font-size:14px;}
+#delete-confirm-input{
+  width:100%;font-size:16px;padding:11px 14px;border:1.5px solid var(--border);
+  border-radius:8px;outline:none;margin-bottom:16px;font-family:var(--font-body);
+}
+.delete-confirm-btn{
+  font-size:15px;font-weight:600;padding:11px 26px;border:none;border-radius:999px;
+  background:var(--accent);color:#fff;cursor:pointer;
+}
+.delete-confirm-btn:hover{opacity:.92;}
+.delete-confirm-btn:disabled{opacity:.4;cursor:not-allowed;}
+
+.danger-zone{
+  border:1.5px dashed #e8c9c2;border-radius:14px;padding:16px 18px;margin-top:24px;
+}
+.danger-zone-btn{
+  font-size:13.5px;font-weight:600;padding:9px 16px;border-radius:999px;cursor:pointer;
+  border:1.5px solid var(--accent);background:none;color:var(--accent);
+}
+.danger-zone-btn:hover{background:#fdf1ef;}
+
+.home-card-delete{
+  font-size:12.5px;color:var(--muted);background:none;border:none;cursor:pointer;
+  padding:4px 6px;margin-top:6px;text-decoration:underline;
+}
+.home-card-delete:hover{color:var(--accent);}
+
 .add-form-btn{
   font-size:14px;font-weight:600;padding:10px 18px;border-radius:999px;
   border:1.5px dashed var(--border);background:none;color:var(--ink);cursor:pointer;margin-top:4px;
@@ -292,6 +322,23 @@ body{
   </div>
 </div>
 
+<!-- ============ DELETE-FORM MODAL ============ -->
+<div id="delete-modal" class="modal-backdrop" hidden>
+  <div class="modal-card">
+    <div class="modal-head">
+      <h2>⚠️ Delete this form?</h2>
+      <button type="button" id="delete-close" class="modal-x" aria-label="Close">✕</button>
+    </div>
+    <p class="delete-warning" id="delete-warning"></p>
+    <label class="mini">Type the form's name to confirm: <strong id="delete-confirm-name"></strong></label>
+    <input type="text" id="delete-confirm-input" autocomplete="off">
+    <div class="save-row">
+      <button type="button" class="delete-confirm-btn" id="delete-confirm-btn" disabled>Delete Forever</button>
+      <span class="save-msg" id="delete-msg"></span>
+    </div>
+  </div>
+</div>
+
 <script>
 (function(){
   "use strict";
@@ -307,7 +354,6 @@ body{
       : SITE_ORIGIN + "/" + entry.path;
   }
   var TYPE_OPTIONS = ["text","email","tel","date","select","textarea","radio","checkbox-group","checkbox"];
-  var FOLDER_FORMS = {application:true, intake:true}; // forms that CAN create new custom fields
 
   /* ---------------- STYLE (colors + fonts) ---------------- */
   // Forms that render on a solid page background (Application/Intake and
@@ -431,6 +477,45 @@ body{
     if(e.target.id === "style-modal") e.target.hidden = true;
   });
 
+  /* ---------------- DELETE FORM ---------------- */
+  function openDeleteModal(key, label){
+    document.getElementById("delete-warning").textContent =
+      'This permanently deletes "'+label+'" — every field, tag, and style choice on it. ' +
+      'If its iframe is embedded anywhere on Kerry\'s site, that embed will go blank immediately. ' +
+      'This cannot be undone.';
+    document.getElementById("delete-confirm-name").textContent = label;
+    var input = document.getElementById("delete-confirm-input");
+    var btn = document.getElementById("delete-confirm-btn");
+    input.value = "";
+    btn.disabled = true;
+    document.getElementById("delete-msg").textContent = "";
+    document.getElementById("delete-modal").hidden = false;
+
+    input.oninput = function(){ btn.disabled = (input.value !== label); };
+
+    btn.onclick = function(){
+      var msgEl = document.getElementById("delete-msg");
+      btn.disabled = true; msgEl.textContent = "Deleting...";
+      fetch(WORKER_BASE + "/admin/delete-form", {
+        method: "POST", headers: authHeaders(), body: JSON.stringify({key: key})
+      })
+      .then(function(r){ if(!r.ok) throw new Error("delete failed"); return r.json(); })
+      .then(function(){
+        document.getElementById("delete-modal").hidden = true;
+        delete state.configs[key];
+        state.activeForm = null;
+        return loadRegistry().then(render);
+      })
+      .catch(function(){ btn.disabled = false; msgEl.textContent = "Couldn't delete. Try again."; });
+    };
+  }
+  document.getElementById("delete-close").addEventListener("click", function(){
+    document.getElementById("delete-modal").hidden = true;
+  });
+  document.getElementById("delete-modal").addEventListener("click", function(e){
+    if(e.target.id === "delete-modal") e.target.hidden = true;
+  });
+
   var pw = null;
   var state = {activeForm: null, configs: {}, saveMsg: {}, loading: {}};
 
@@ -533,7 +618,8 @@ body{
     var html = '<div class="home-list">' + FORMS.map(function(f){
       return '<div class="home-card">'
         + '<div class="home-card-main"><h3>'+esc(f.label)+'</h3>'
-        + '<code class="home-card-url">'+esc(embedUrl(f))+'</code>'
+        + '<code class="home-card-url">'+esc(embedUrl(f))+'</code><br>'
+        + '<button type="button" class="home-card-delete" data-form="'+f.key+'" data-label="'+esc(f.label)+'">Delete this form</button>'
         + '</div>'
         + '<button type="button" class="home-card-btn" data-form="'+f.key+'">Edit →</button>'
         + '</div>';
@@ -555,6 +641,11 @@ body{
       btn.addEventListener("click", function(){
         state.activeForm = btn.getAttribute("data-form");
         render();
+      });
+    });
+    Array.prototype.forEach.call(panelEl.querySelectorAll(".home-card-delete"), function(btn){
+      btn.addEventListener("click", function(){
+        openDeleteModal(btn.getAttribute("data-form"), btn.getAttribute("data-label"));
       });
     });
 
@@ -663,7 +754,7 @@ body{
       }
 
       html += '<div class="rename-row">'
-        + '<label class="mini">Form name (shown here and on the home screen)</label>'
+        + '<label class="mini">Form name (internal — shown here and on the home screen only, never on the live form)</label>'
         + '<div class="rename-inputs"><input type="text" id="rename-input" value="'+esc(entry.label)+'">'
         + '<button type="button" id="rename-save">Save name</button>'
         + '<span class="copy-msg" id="rename-msg"></span>'
@@ -686,6 +777,13 @@ body{
       + '<button type="button" class="save-btn" id="save-btn-'+key+'">Save Changes</button>'
       + '<span class="save-msg" id="save-msg-'+key+'"></span>'
       + '</div>';
+
+    if(entry){
+      html += '<div class="danger-zone">'
+        + '<button type="button" class="danger-zone-btn" id="danger-delete-form" data-form="'+key+'" data-label="'+esc(entry.label)+'">Delete this form</button>'
+        + '</div>';
+    }
+
     panelEl.innerHTML = html;
 
     wirePanelEvents(key, cfg);
@@ -693,6 +791,13 @@ body{
     var styleOpenBtn = document.getElementById("style-open");
     if(styleOpenBtn){
       styleOpenBtn.addEventListener("click", function(){ openStyleModal(key, cfg); });
+    }
+
+    var dangerDeleteBtn = document.getElementById("danger-delete-form");
+    if(dangerDeleteBtn){
+      dangerDeleteBtn.addEventListener("click", function(){
+        openDeleteModal(dangerDeleteBtn.getAttribute("data-form"), dangerDeleteBtn.getAttribute("data-label"));
+      });
     }
 
     var renameSaveBtn = document.getElementById("rename-save");
@@ -770,7 +875,7 @@ body{
     html += '<div class="field-btns">'
       + '<button type="button" class="icon-btn f-up" title="Move up">↑</button>'
       + '<button type="button" class="icon-btn f-down" title="Move down">↓</button>'
-      + '<button type="button" class="icon-btn danger f-delete" title="Delete field"'+(isStandard?' disabled':'')+'>✕</button>'
+      + '<button type="button" class="icon-btn danger f-delete" title="Delete field"'+(field.locked?' disabled':'')+'>✕</button>'
       + '</div>';
 
     html += '</div>'; // field-row-top
@@ -939,10 +1044,6 @@ body{
 
       var addFieldBtn = stageEl.querySelector("[data-add-field-stage]");
       addFieldBtn.addEventListener("click", function(){
-        if(!FOLDER_FORMS[formKey]){
-          alert("This form (" + formKey + ") has no GHL custom-field folder, so new fields can't be added here. Use the ticket system for anything beyond the built-in fields.");
-          return;
-        }
         stage.fields.push({
           id: "custom_" + Date.now().toString(36),
           label: "New Field",

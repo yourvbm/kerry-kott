@@ -291,7 +291,8 @@
   function buildForm(cfg){
     applyTheme(cfg.theme);
     document.title = cfg.title || "Kerry Kott";
-    titleEl.textContent = cfg.title || "";
+    if(cfg.title){ titleEl.textContent = cfg.title; }
+    else { document.querySelector("#ef-generic .ef-head").hidden = true; }
     var stage = cfg.stages[0];
     document.getElementById("ef-fields").innerHTML = stage.fields.map(renderField).join("");
     loadingEl.hidden = true;
