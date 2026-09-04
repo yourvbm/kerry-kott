@@ -79,6 +79,33 @@ body{
 .panel-loading{color:var(--muted);padding:30px 0;}
 .panel-error{color:var(--accent);padding:16px;background:#fdf1ef;border-radius:10px;margin-bottom:16px;white-space:pre-wrap;}
 
+.rename-row{margin-bottom:14px;}
+.rename-row .mini{display:block;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.02em;margin-bottom:6px;}
+.rename-inputs{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.rename-inputs input[type=text]{
+  flex:1 1 260px;min-width:180px;font-size:16px;padding:9px 14px;
+  border:1.5px solid var(--border);border-radius:8px;font-family:var(--font-display);
+}
+.rename-inputs button{
+  font-size:13.5px;font-weight:600;padding:9px 16px;border-radius:999px;border:none;
+  background:var(--ink);color:var(--cream);cursor:pointer;
+}
+.rename-inputs button:hover{opacity:.92;}
+
+.add-form-btn{
+  font-size:14px;font-weight:600;padding:10px 18px;border-radius:999px;
+  border:1.5px dashed var(--border);background:none;color:var(--ink);cursor:pointer;margin-top:4px;
+}
+.add-form-btn:hover{border-color:var(--ink);}
+.add-form-box{
+  background:var(--panel);border:1.5px solid var(--border);border-radius:14px;
+  padding:18px 22px;margin-top:14px;max-width:480px;
+}
+.add-form-box select{
+  width:100%;font-size:15px;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;background:#fff;
+}
+.add-form-hint{font-size:12.5px;color:var(--muted);margin:0 0 14px;line-height:1.5;}
+
 .embed-box{
   background:var(--panel);border:1.5px solid var(--border);border-radius:14px;
   padding:16px 18px;margin-bottom:20px;
@@ -213,18 +240,16 @@ body{
 (function(){
   "use strict";
   var WORKER_BASE = "https://kerry-forms.miriam-68c.workers.dev";
-  var FORMS = [
-    {key:"application", label:"Application"},
-    {key:"intake", label:"Intake"},
-    {key:"waitlist", label:"Waitlist"}
-  ];
   var SITE_ORIGIN = "https://admin.kerrykott.com";
-  var PAGE_META = {
-    application: {path:"application", minHeight:900},
-    intake: {path:"intake", minHeight:900},
-    waitlist: {path:"waitlist", minHeight:700}
-  };
+  var FORMS = []; // loaded from /admin/registry after login
   var previewOpen = {}; // formKey -> bool, resets on tab switch (fine)
+
+  function entryFor(key){ return FORMS.filter(function(f){ return f.key===key; })[0]; }
+  function embedUrl(entry){
+    return entry.kind === "generic"
+      ? SITE_ORIGIN + "/" + entry.path + "?form=" + entry.key
+      : SITE_ORIGIN + "/" + entry.path;
+  }
   var TYPE_OPTIONS = ["text","email","tel","date","select","textarea","radio","checkbox-group","checkbox"];
   var FOLDER_FORMS = {application:true, intake:true}; // forms that CAN create new custom fields
 
@@ -295,10 +320,18 @@ body{
     if(stored){ pw = stored; }
   }catch(e){}
 
+  function loadRegistry(){
+    return fetch(WORKER_BASE + "/admin/registry", {headers: authHeaders()})
+      .then(function(r){ if(!r.ok) throw new Error("registry fetch failed"); return r.json(); })
+      .then(function(reg){ FORMS = reg; });
+  }
+
   function showApp(){
     loginEl.hidden = true;
     appEl.hidden = false;
-    render();
+    loadRegistry()
+      .then(render)
+      .catch(function(){ panelEl.innerHTML = '<p class="panel-error">Couldn\'t load the form list. Please refresh.</p>'; });
   }
 
   function render(){
@@ -319,21 +352,59 @@ body{
   document.getElementById("home-link").addEventListener("click", goHome);
 
   function renderHome(){
-    panelEl.innerHTML = '<div class="home-list">' + FORMS.map(function(f){
-      var meta = PAGE_META[f.key];
-      var url = meta ? SITE_ORIGIN + "/" + meta.path : "";
+    var html = '<div class="home-list">' + FORMS.map(function(f){
       return '<div class="home-card">'
         + '<div class="home-card-main"><h3>'+esc(f.label)+'</h3>'
-        + (url ? '<code class="home-card-url">'+esc(url)+'</code>' : '')
+        + '<code class="home-card-url">'+esc(embedUrl(f))+'</code>'
         + '</div>'
         + '<button type="button" class="home-card-btn" data-form="'+f.key+'">Edit →</button>'
         + '</div>';
     }).join("") + '</div>';
+
+    html += '<button type="button" class="add-form-btn" id="add-form-toggle">+ Add Form</button>';
+    html += '<div class="add-form-box" id="add-form-box" hidden>'
+      + '<div class="stage-row"><label>Duplicate which form?</label>'
+      + '<select id="add-form-source">' + FORMS.map(function(f){ return '<option value="'+esc(f.key)+'">'+esc(f.label)+'</option>'; }).join("") + '</select></div>'
+      + '<div class="stage-row"><label>New form\'s name</label>'
+      + '<input type="text" id="add-form-name" placeholder="e.g. Retreat Photography Add-On"></div>'
+      + '<p class="add-form-hint">Only single-step forms (like Waitlist or eBook Opt-in) can be duplicated — a multi-step form like Application will be rejected with an explanation.</p>'
+      + '<div class="save-row"><button type="button" class="save-btn" id="add-form-create">Create</button>'
+      + '<span class="save-msg" id="add-form-msg"></span></div>'
+      + '</div>';
+
+    panelEl.innerHTML = html;
     Array.prototype.forEach.call(panelEl.querySelectorAll(".home-card-btn"), function(btn){
       btn.addEventListener("click", function(){
         state.activeForm = btn.getAttribute("data-form");
         render();
       });
+    });
+
+    var toggleBtn = document.getElementById("add-form-toggle");
+    var box = document.getElementById("add-form-box");
+    toggleBtn.addEventListener("click", function(){ box.hidden = !box.hidden; });
+
+    document.getElementById("add-form-create").addEventListener("click", function(){
+      var sourceKey = document.getElementById("add-form-source").value;
+      var newLabel = document.getElementById("add-form-name").value.trim();
+      var msgEl = document.getElementById("add-form-msg");
+      var btn = document.getElementById("add-form-create");
+      if(!newLabel){ msgEl.textContent = "Give the new form a name first."; msgEl.className = "save-msg err"; return; }
+      btn.disabled = true; msgEl.textContent = "Creating..."; msgEl.className = "save-msg";
+      fetch(WORKER_BASE + "/admin/duplicate-form", {
+        method: "POST", headers: authHeaders(),
+        body: JSON.stringify({sourceKey: sourceKey, newLabel: newLabel})
+      })
+      .then(function(r){ return r.json().then(function(body){ return {ok:r.ok, body:body}; }); })
+      .then(function(res){
+        btn.disabled = false;
+        if(!res.ok){ msgEl.textContent = res.body.error || "Couldn't create the form."; msgEl.className = "save-msg err"; return; }
+        return loadRegistry().then(function(){
+          state.activeForm = res.body.key;
+          render();
+        });
+      })
+      .catch(function(){ btn.disabled = false; msgEl.textContent = "Couldn't reach the server."; msgEl.className = "save-msg err"; });
     });
   }
 
@@ -399,9 +470,17 @@ body{
     }
 
     var html = "";
-    var meta = PAGE_META[key];
-    if(meta){
-      var embedCode = '<iframe src="'+SITE_ORIGIN+'/'+meta.path+'" style="width:100%;border:none;min-height:'+meta.minHeight+'px;"></iframe>';
+    var entry = entryFor(key);
+    if(entry){
+      html += '<div class="rename-row">'
+        + '<label class="mini">Form name (shown here and on the home screen)</label>'
+        + '<div class="rename-inputs"><input type="text" id="rename-input" value="'+esc(entry.label)+'">'
+        + '<button type="button" id="rename-save">Save name</button>'
+        + '<span class="copy-msg" id="rename-msg"></span></div>'
+        + '</div>';
+
+      var url = embedUrl(entry);
+      var embedCode = '<iframe src="'+url+'" style="width:100%;border:none;min-height:'+(entry.minHeight||700)+'px;"></iframe>';
       var isOpen = !!previewOpen[key];
       html += '<div class="embed-box">'
         + '<div class="embed-row">'
@@ -411,7 +490,7 @@ body{
         + '<span class="copy-msg" id="copy-msg-'+key+'"></span>'
         + '</div>';
       if(isOpen){
-        html += '<div class="preview-frame-wrap"><iframe class="preview-frame" src="'+SITE_ORIGIN+'/'+meta.path+'"></iframe></div>';
+        html += '<div class="preview-frame-wrap"><iframe class="preview-frame" src="'+url+'"></iframe></div>';
       }
       html += '</div>';
     }
@@ -425,6 +504,29 @@ body{
     panelEl.innerHTML = html;
 
     wirePanelEvents(key, cfg);
+
+    var renameSaveBtn = document.getElementById("rename-save");
+    if(renameSaveBtn){
+      renameSaveBtn.addEventListener("click", function(){
+        var newLabel = document.getElementById("rename-input").value.trim();
+        var msgEl = document.getElementById("rename-msg");
+        if(!newLabel){ msgEl.textContent = "Name can't be empty."; msgEl.className = "save-msg err"; return; }
+        renameSaveBtn.disabled = true; msgEl.textContent = "Saving...";
+        var updated = FORMS.map(function(f){ return f.key===key ? Object.assign({}, f, {label:newLabel}) : f; });
+        fetch(WORKER_BASE + "/admin/registry", {
+          method: "POST", headers: authHeaders(), body: JSON.stringify(updated)
+        })
+        .then(function(r){ if(!r.ok) throw new Error("save failed"); return r.json(); })
+        .then(function(reg){
+          FORMS = reg;
+          renameSaveBtn.disabled = false;
+          msgEl.textContent = "Saved!"; msgEl.className = "save-msg ok";
+          renderTabs();
+          setTimeout(function(){ if(msgEl) msgEl.textContent = ""; }, 2000);
+        })
+        .catch(function(){ renameSaveBtn.disabled = false; msgEl.textContent = "Couldn't save."; msgEl.className = "save-msg err"; });
+      });
+    }
 
     var msg = state.saveMsg[key];
     if(msg){

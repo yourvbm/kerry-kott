@@ -1,0 +1,30 @@
+[
+  {
+    "key": "application",
+    "label": "Application",
+    "path": "application",
+    "kind": "custom",
+    "minHeight": 900
+  },
+  {
+    "key": "intake",
+    "label": "Intake",
+    "path": "intake",
+    "kind": "custom",
+    "minHeight": 900
+  },
+  {
+    "key": "waitlist",
+    "label": "Waitlist",
+    "path": "waitlist",
+    "kind": "custom",
+    "minHeight": 700
+  },
+  {
+    "key": "ebook",
+    "label": "Free eBook Opt-in",
+    "path": "f",
+    "kind": "generic",
+    "minHeight": 700
+  }
+]

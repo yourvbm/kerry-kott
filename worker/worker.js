@@ -32,7 +32,12 @@ const GHL_VERSION = "2021-07-28";
 const CUSTOM_FIELD_FOLDERS = {
   application: "pGU3e8A5Yza3PDw7sBdA", // Retreat Application
   intake: "6J4UdKoukdLrxniDCVwa",      // Retreat Intake
+  waitlist: null,                       // deliberately none — waitlist stays standard-fields-only
 };
+// Default folder for any form not listed above (new/duplicated forms via
+// "+ Add Form"). `null` in CUSTOM_FIELD_FOLDERS (waitlist) overrides this;
+// `undefined` (not in the map at all) falls through to it.
+const MISC_FOLDER_ID = "A1hF3AhG1cwppMQIJOUh"; // "Misc Forms"
 
 // Our field `type` -> GHL customField `dataType`.
 const TYPE_TO_DATATYPE = {
@@ -115,6 +120,35 @@ async function loadConfig(env, formKey) {
 
 async function saveConfig(env, formKey, cfg) {
   await env.CONFIG.put(`config:${formKey}`, JSON.stringify(cfg));
+}
+
+// The registry is the list of forms the admin shows on its home screen and
+// as tabs. Each entry: { key, label, path, kind }. `path` is the hosted
+// page's URL path (no leading slash needed beyond SITE_ORIGIN + "/" + path);
+// `kind` is "custom" (its own hand-built HTML file) or "generic" (served by
+// the shared f.html template via ?form=<key>).
+const DEFAULT_REGISTRY = [
+  { key: "application", label: "Application", path: "application", kind: "custom", minHeight: 900 },
+  { key: "intake", label: "Intake", path: "intake", kind: "custom", minHeight: 900 },
+  { key: "waitlist", label: "Waitlist", path: "waitlist", kind: "custom", minHeight: 700 },
+];
+
+async function loadRegistry(env) {
+  const raw = await env.CONFIG.get("registry");
+  if (!raw) return DEFAULT_REGISTRY;
+  try { return JSON.parse(raw); } catch { return DEFAULT_REGISTRY; }
+}
+
+async function saveRegistry(env, registry) {
+  await env.CONFIG.put("registry", JSON.stringify(registry));
+}
+
+function slugify(s) {
+  return String(s || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60) || "form";
 }
 
 // Constant-time-ish string compare (not truly timing-safe on all runtimes,
@@ -285,7 +319,7 @@ async function handleAdminConfigSave(request, env, cors) {
     return json({ error: "Bad config payload" }, 400, cors);
   }
 
-  const folderId = CUSTOM_FIELD_FOLDERS[formKey];
+  const folderId = (formKey in CUSTOM_FIELD_FOLDERS) ? CUSTOM_FIELD_FOLDERS[formKey] : MISC_FOLDER_ID;
 
   try {
     for (const stage of cfg.stages) {
@@ -311,6 +345,73 @@ async function handleAdminConfigSave(request, env, cors) {
 
   await saveConfig(env, formKey, cfg);
   return json(cfg, 200, cors);
+}
+
+// ---------- /admin/registry ----------
+
+async function handleRegistryGet(request, env, cors) {
+  if (!requireAdmin(request, env)) return json({ error: "Unauthorized" }, 401, cors);
+  return json(await loadRegistry(env), 200, cors);
+}
+
+async function handleRegistrySave(request, env, cors) {
+  if (!requireAdmin(request, env)) return json({ error: "Unauthorized" }, 401, cors);
+  let d;
+  try { d = await request.json(); }
+  catch { return json({ error: "Bad JSON" }, 400, cors); }
+  if (!Array.isArray(d)) return json({ error: "Registry must be an array" }, 400, cors);
+  await saveRegistry(env, d);
+  return json(d, 200, cors);
+}
+
+// ---------- /admin/duplicate-form ----------
+
+async function handleDuplicateForm(request, env, cors) {
+  if (!requireAdmin(request, env)) return json({ error: "Unauthorized" }, 401, cors);
+  let d;
+  try { d = await request.json(); }
+  catch { return json({ error: "Bad JSON" }, 400, cors); }
+
+  const sourceKey = d.sourceKey;
+  const newLabel = (d.newLabel || "").trim();
+  if (!sourceKey || !newLabel) return json({ error: "sourceKey and newLabel are required" }, 400, cors);
+
+  const registry = await loadRegistry(env);
+  const sourceEntry = registry.find((f) => f.key === sourceKey);
+  if (!sourceEntry) return json({ error: "Unknown source form" }, 400, cors);
+
+  const sourceCfg = await loadConfig(env, sourceKey);
+  if (!sourceCfg) return json({ error: "Source form has no config" }, 400, cors);
+  if ((sourceCfg.stages || []).length > 1) {
+    return json({ error: `"${sourceEntry.label}" has multiple steps (like an abandoned-cart flow) — only single-step forms can be duplicated right now.` }, 400, cors);
+  }
+
+  let newKey = slugify(newLabel);
+  let suffix = 2;
+  while (registry.some((f) => f.key === newKey)) { newKey = `${slugify(newLabel)}-${suffix}`; suffix++; }
+
+  // Deep clone via JSON round-trip (config is plain data, no functions).
+  const newCfg = JSON.parse(JSON.stringify(sourceCfg));
+  newCfg.title = newLabel;
+  newCfg.source = newLabel;
+  // Strip GHL field bindings on every non-standard field — the clone is a
+  // separate form and must never write into the SAME GHL custom field as
+  // its source (that would corrupt both forms' data). The next admin save
+  // auto-creates fresh fields for it, same as adding a brand-new field.
+  for (const stage of newCfg.stages || []) {
+    for (const f of stage.fields || []) {
+      if (f.standard) continue;
+      delete f.ghlFieldId;
+      delete f.ghlKey;
+      delete f.ghlName;
+    }
+  }
+
+  await saveConfig(env, newKey, newCfg);
+  registry.push({ key: newKey, label: newLabel, path: "f", kind: "generic", minHeight: 700 });
+  await saveRegistry(env, registry);
+
+  return json({ ok: true, key: newKey, label: newLabel }, 200, cors);
 }
 
 // ---------- router ----------
@@ -354,6 +455,21 @@ export default {
     // POST /admin/config — protected
     if (request.method === "POST" && path === "/admin/config") {
       return handleAdminConfigSave(request, env, cors);
+    }
+
+    // GET /admin/registry — protected
+    if (request.method === "GET" && path === "/admin/registry") {
+      return handleRegistryGet(request, env, cors);
+    }
+
+    // POST /admin/registry — protected
+    if (request.method === "POST" && path === "/admin/registry") {
+      return handleRegistrySave(request, env, cors);
+    }
+
+    // POST /admin/duplicate-form — protected
+    if (request.method === "POST" && path === "/admin/duplicate-form") {
+      return handleDuplicateForm(request, env, cors);
     }
 
     // ---- Legacy support: bare POST / (or POST /?form=waitlist) with no

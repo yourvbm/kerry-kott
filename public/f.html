@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kerry Kott</title>
+<link href="https://fonts.googleapis.com/css2?family=Sorts+Mill+Goudy:ital@0;1&family=Playfair+Display:ital,wght@0,400..700;1,400..700&family=EB+Garamond:ital@0;1&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+@font-face {
+  font-family: 'sunflora-hksqi6';
+  font-style: normal; font-weight: 400; font-display: swap;
+  src: url('https://file.squarespace-cdn.com/content/v2/namespaces/fonts/libraries/5fad387af44df56affb45c67/assets/37ab1441-81a8-45bc-8fea-80033769339c/font.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'botanica-wh6jh9';
+  font-style: normal; font-weight: 400; font-display: swap;
+  src: url('https://file.squarespace-cdn.com/content/v2/namespaces/fonts/libraries/5fad387af44df56affb45c67/assets/a8a98bae-e7c5-481f-9112-f8c9ba117608/font.woff2') format('woff2');
+}
+/* ===== Scoped to #ef-generic only - never styles the host page body =====
+   This is the SHARED template for any form created via "+ Add Form" in the
+   admin (single stage, no multi-step). Which form it renders is decided
+   entirely at runtime by ?form=<key> — a new form never needs a new file
+   or a deploy. Application/Intake/Waitlist stay their own hand-built pages;
+   this one is for everything cloned afterward. */
+#ef-generic{
+  --cream:#F5F0EB;
+  --ink:#2A221E;
+  --border:#C7BCAD;
+  --muted:#8C8073;
+  --font-display:"sunflora-hksqi6","Playfair Display",Georgia,"Times New Roman",serif;
+  --font-accent:"botanica-wh6jh9","Playfair Display",Georgia,serif;
+  --font-body:"Sorts Mill Goudy",Georgia,"Times New Roman",serif;
+  --input-bg:transparent;
+  background:var(--cream);
+  color:var(--ink);
+  font-family:var(--font-body);
+  -webkit-font-smoothing:antialiased;
+  line-height:1.5;
+}
+#ef-generic *{box-sizing:border-box;}
+#ef-generic [hidden]{display:none !important;}
+#ef-generic .ef-shell{
+  max-width:760px;
+  margin:0 auto;
+  padding:48px 28px 64px;
+}
+
+/* Header */
+#ef-generic .ef-head{margin-bottom:28px;}
+#ef-generic .ef-title{
+  font-family:var(--font-display);
+  font-weight:400;
+  font-size:clamp(38px,6vw,62px);
+  line-height:1.02;
+  margin:0;
+  color:var(--ink);
+}
+#ef-generic .ef-intro{
+  font-size:clamp(18px,2.2vw,23px);
+  margin:0;
+  color:var(--ink);
+}
+
+/* Fields */
+#ef-generic .ef-field{display:block;margin:0 0 24px;}
+#ef-generic .ef-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+#ef-generic .ef-label{
+  display:block;
+  font-family:var(--font-display);
+  font-size:20px;
+  line-height:1.3;
+  margin:0 0 10px;
+  color:var(--ink);
+}
+#ef-generic .ef-label em{font-style:normal;font-family:var(--font-body);font-size:15px;color:var(--muted);}
+#ef-generic .ef-help{display:block;font-size:15px;color:var(--muted);margin:-2px 0 10px;line-height:1.45;}
+#ef-generic .ef-note{font-size:16px;color:var(--ink);opacity:.82;margin:0 0 14px;line-height:1.5;}
+
+#ef-generic input[type=text],
+#ef-generic input[type=email],
+#ef-generic input[type=tel],
+#ef-generic input[type=date],
+#ef-generic textarea{
+  width:100%;
+  font-family:var(--font-body);
+  font-size:18px;
+  color:var(--ink);
+  background:var(--input-bg);
+  border:1.5px solid var(--border);
+  padding:14px 20px;
+  border-radius:32px;
+  outline:none;
+  transition:border-color .2s ease, box-shadow .2s ease;
+}
+#ef-generic textarea{border-radius:22px;resize:vertical;line-height:1.5;}
+#ef-generic input:focus,#ef-generic textarea:focus{
+  border-color:var(--ink);
+  box-shadow:0 0 0 1px var(--ink);
+}
+#ef-generic input.ef-invalid,#ef-generic textarea.ef-invalid{
+  border-color:#a8463c;box-shadow:0 0 0 1px rgba(168,70,60,.4);
+}
+#ef-generic .ef-field.ef-invalid-group .ef-label{color:#a8463c;}
+
+/* Checkboxes & radios */
+#ef-generic .ef-check,#ef-generic .ef-radio{
+  display:flex;align-items:flex-start;gap:12px;
+  font-size:18px;cursor:pointer;margin:0 0 12px;line-height:1.4;
+}
+#ef-generic .ef-check input,#ef-generic .ef-radio input{
+  appearance:none;-webkit-appearance:none;
+  flex:0 0 auto;width:22px;height:22px;margin-top:1px;
+  border:1.5px solid var(--border);background:transparent;cursor:pointer;
+  transition:all .15s ease;
+}
+#ef-generic .ef-check input{border-radius:6px;}
+#ef-generic .ef-radio input{border-radius:50%;}
+#ef-generic .ef-check input:checked,#ef-generic .ef-radio input:checked{
+  background:var(--ink);border-color:var(--ink);
+}
+#ef-generic .ef-check input:checked{
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23F5F0EB' stroke-width='3'><path d='M5 12l5 5L20 7'/></svg>");
+  background-repeat:no-repeat;background-position:center;
+}
+#ef-generic .ef-radio input:checked{box-shadow:inset 0 0 0 4px var(--cream);}
+#ef-generic .ef-price{font-style:normal;color:var(--muted);font-family:var(--font-body);}
+#ef-generic .ef-check-disabled{opacity:.55;cursor:not-allowed;}
+#ef-generic .ef-check-disabled input{cursor:not-allowed;}
+#ef-generic .ef-soldout{
+  font-style:normal;font-family:var(--font-body);
+  font-size:12px;letter-spacing:.08em;
+  color:#a8463c;border:1.5px solid #a8463c;border-radius:999px;
+  padding:2px 10px;margin-left:6px;white-space:nowrap;vertical-align:middle;
+}
+
+/* Nav + buttons */
+#ef-generic .ef-nav{display:flex;gap:14px;align-items:center;margin-top:36px;}
+#ef-generic .ef-btn{
+  font-family:var(--font-accent);
+  font-size:21px;
+  letter-spacing:.01em;
+  background:var(--ink);
+  color:var(--cream);
+  border:none;
+  border-radius:999px;
+  padding:18px 40px;
+  cursor:pointer;
+  transition:transform .15s ease,opacity .2s ease;
+  margin-left:auto;
+}
+#ef-generic .ef-btn:hover{transform:translateY(-1px);opacity:.92;}
+#ef-generic .ef-btn:disabled{opacity:.5;cursor:default;transform:none;}
+#ef-generic .ef-error{color:#a8463c;font-size:17px;margin:22px 0 0;}
+#ef-generic .ef-success{text-align:center;padding:40px 10px;}
+#ef-generic .ef-loading{font-size:16px;color:var(--muted);padding:20px 0;}
+
+@media (max-width:560px){
+  #ef-generic .ef-shell{padding:32px 18px 48px;}
+  #ef-generic .ef-grid-2{grid-template-columns:1fr;}
+  #ef-generic .ef-btn{padding:16px 30px;font-size:19px;}
+}
+</style>
+</head>
+<body>
+
+<div id="ef-generic">
+  <div class="ef-shell">
+
+    <header class="ef-head">
+      <h2 class="ef-title" id="ef-page-title">Loading…</h2>
+    </header>
+
+    <p class="ef-loading" id="ef-loading">Loading form...</p>
+
+    <form id="ef-form" novalidate autocomplete="on" hidden>
+      <div id="ef-fields"></div>
+
+      <p class="ef-error" id="ef-error" role="alert" hidden>Please complete the required fields above before submitting.</p>
+
+      <div class="ef-nav">
+        <button type="submit" class="ef-btn" id="ef-submit">Submit</button>
+      </div>
+    </form>
+
+    <div class="ef-success" id="ef-success" hidden>
+      <h3 class="ef-title" style="font-size:clamp(28px,4vw,40px);">Thank you.</h3>
+      <p class="ef-intro">Your submission was received.</p>
+    </div>
+
+    <div class="ef-success" id="ef-exit" hidden>
+      <p class="ef-intro" id="ef-exit-message"></p>
+    </div>
+
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  /* ====================== CONFIG ======================
+     Which form this page renders is decided at runtime by ?form=<key>,
+     so a brand-new form (created via "+ Add Form" in the admin) works
+     immediately with no new file and no deploy. */
+  var CONFIG = {
+    WORKER_BASE: "https://kerry-forms.miriam-68c.workers.dev",
+    FORM_KEY: (new URLSearchParams(window.location.search)).get("form") || ""
+  };
+  /* ==================================================== */
+
+  var root      = document.getElementById("ef-generic");
+  var titleEl   = document.getElementById("ef-page-title");
+  var loadingEl = document.getElementById("ef-loading");
+  var form      = document.getElementById("ef-form");
+  var subBtn    = document.getElementById("ef-submit");
+  var errEl     = document.getElementById("ef-error");
+
+  if(!CONFIG.FORM_KEY){
+    loadingEl.textContent = "No form specified.";
+    throw new Error("missing ?form=");
+  }
+
+  function esc(s){
+    return String(s == null ? "" : s)
+      .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  }
+  function priceSplit(label){
+    var i = label.indexOf(" — ");
+    if(i === -1) return esc(label);
+    return esc(label.slice(0,i)) + ' <em class="ef-price">' + esc(label.slice(i+3)) + '</em>';
+  }
+
+  function renderField(f){
+    var reqTag = f.required ? ' <em>(required)</em>' : '';
+    var htmlType = (f.standardKey === "email") ? "email" : f.type;
+    var wrapAttrs = f.showIf ? ' id="fld-'+f.id+'" hidden' : '';
+
+    if(f.type === "text" || f.type === "tel" || f.type === "date"){
+      return '<label class="ef-field"'+wrapAttrs+'><span class="ef-label">'+esc(f.label)+reqTag+'</span>'
+        + (f.note ? '<span class="ef-help">'+esc(f.note)+'</span>' : '')
+        + '<input type="'+htmlType+'" name="'+f.id+'"'+(f.required && !f.showIf?' required':'')+'></label>';
+    }
+    if(f.type === "textarea"){
+      return '<label class="ef-field"'+wrapAttrs+'><span class="ef-label">'+esc(f.label)+reqTag+'</span>'
+        + (f.note ? '<span class="ef-help">'+esc(f.note)+'</span>' : '')
+        + '<textarea name="'+f.id+'" rows="4"'+(f.required && !f.showIf?' required':'')+'></textarea></label>';
+    }
+    if(f.type === "radio"){
+      var opts = (f.options||[]).map(function(o,idx){
+        return '<label class="ef-radio"><input type="radio" name="'+f.id+'" value="'+esc(o.value)+'"'+(f.required&&idx===0?' required':'')+'><span>'+priceSplit(o.label)+'</span></label>';
+      }).join("");
+      return '<div class="ef-field"'+wrapAttrs+'><span class="ef-label">'+esc(f.label)+reqTag+'</span>'
+        + (f.note ? '<p class="ef-note">'+esc(f.note)+'</p>' : '') + opts + '</div>';
+    }
+    if(f.type === "checkbox-group"){
+      var copts = (f.options||[]).map(function(o){
+        var soldOut = !!o.soldOut;
+        return '<label class="ef-check'+(soldOut?' ef-check-disabled':'')+'"><input type="checkbox" name="'+f.id+'" value="'+esc(o.value)+'"'+(soldOut?' disabled':'')+'><span>'+priceSplit(o.label)+(soldOut?' <em class="ef-soldout">SOLD OUT</em>':'')+'</span></label>';
+      }).join("");
+      return '<div class="ef-field"'+wrapAttrs+'><span class="ef-label">'+esc(f.label)+reqTag+'</span>'
+        + (f.note ? '<p class="ef-note">'+esc(f.note)+'</p>' : '') + copts + '</div>';
+    }
+    if(f.type === "checkbox"){
+      return '<label class="ef-check"'+wrapAttrs+'><input type="checkbox" name="'+f.id+'" value="Yes"><span>'+esc(f.label)+'</span></label>';
+    }
+    if(f.type === "select"){
+      return '<label class="ef-field"'+wrapAttrs+'><span class="ef-label">'+esc(f.label)+reqTag+'</span>'
+        + '<input type="text" name="'+f.id+'"'+(f.required && !f.showIf?' required':'')+'></label>';
+    }
+    return "";
+  }
+
+  fetch(CONFIG.WORKER_BASE + "/config?form=" + CONFIG.FORM_KEY)
+    .then(function(r){ if(!r.ok) throw new Error("config fetch failed"); return r.json(); })
+    .then(function(cfg){ buildForm(cfg); })
+    .catch(function(){
+      loadingEl.textContent = "This form couldn't load. Please refresh the page, or contact us if it keeps happening.";
+    });
+
+  function buildForm(cfg){
+    document.title = cfg.title || "Kerry Kott";
+    titleEl.textContent = cfg.title || "";
+    var stage = cfg.stages[0];
+    document.getElementById("ef-fields").innerHTML = stage.fields.map(renderField).join("");
+    loadingEl.hidden = true;
+    form.hidden = false;
+    init(stage);
+  }
+
+  function init(stage){
+    var condFields = stage.fields.filter(function(f){ return f.showIf; });
+
+    var STORE_KEY = "ef_generic_state_" + CONFIG.FORM_KEY;
+    var STORE_TTL = 14*24*60*60*1000; // 14 days
+
+    function saveState(){
+      try{
+        var data = {};
+        form.querySelectorAll("input,textarea,select").forEach(function(el){
+          if(!el.name) return;
+          if(el.type==="radio"){ if(el.checked) data[el.name] = el.value; }
+          else if(el.type==="checkbox"){ if(el.checked){ (data[el.name]=data[el.name]||[]).push(el.value); } }
+          else if(el.value){ data[el.name] = el.value; }
+        });
+        localStorage.setItem(STORE_KEY, JSON.stringify({ts:Date.now(), data:data}));
+      }catch(e){/* private mode / storage full - fail silently */}
+    }
+    function clearState(){ try{ localStorage.removeItem(STORE_KEY); }catch(e){} }
+    function restoreState(){
+      var saved;
+      try{ saved = JSON.parse(localStorage.getItem(STORE_KEY)||"null"); }catch(e){ saved=null; }
+      if(!saved || !saved.data) return;
+      if(saved.ts && (Date.now()-saved.ts) > STORE_TTL){ clearState(); return; }
+      Object.keys(saved.data).forEach(function(name){
+        var val = saved.data[name];
+        form.querySelectorAll("[name='"+name+"']").forEach(function(el){
+          if(el.type==="radio"){ el.checked = (el.value===val); }
+          else if(el.type==="checkbox"){
+            var arr = Array.isArray(val)?val:[val];
+            if(arr.indexOf(el.value)!==-1 && !el.disabled) el.checked = true;
+          } else { el.value = val; }
+        });
+      });
+    }
+    form.addEventListener("input", saveState);
+    form.addEventListener("change", saveState);
+    restoreState();
+
+    /* Prefill name + email from a linked email's URL params. */
+    try {
+      var params = new URLSearchParams(window.location.search);
+      function prefill(key, sel){
+        var v = params.get(key);
+        if(v){ var el = form.querySelector(sel); if(el && !el.value) el.value = v.trim(); }
+      }
+      prefill("first_name", "input[name=first_name]");
+      prefill("last_name",  "input[name=last_name]");
+      prefill("email",      "input[name=email]");
+    } catch(e){ /* prefill is best-effort, never block the form */ }
+
+    /* Generic conditional-field wiring, driven by each field's showIf. */
+    function syncConditionals(){
+      condFields.forEach(function(cf){
+        var wrap = document.getElementById("fld-"+cf.id);
+        if(!wrap) return;
+        var checked = form.querySelector("input[name='"+cf.showIf.field+"']:checked");
+        var match = !!(checked && checked.value === cf.showIf.equals);
+        wrap.hidden = !match;
+        var input = wrap.querySelector("input,textarea,select");
+        if(input){
+          input.required = !!(match && cf.required);
+          if(!match){ input.value=""; input.classList.remove("ef-invalid"); }
+        }
+      });
+    }
+    form.addEventListener("change", syncConditionals);
+    syncConditionals();
+
+    function validate(){
+      var ok = true;
+      var fields = form.querySelectorAll("input,textarea");
+      form.querySelectorAll(".ef-invalid").forEach(function(e){e.classList.remove("ef-invalid");});
+      form.querySelectorAll(".ef-invalid-group").forEach(function(e){e.classList.remove("ef-invalid-group");});
+      var radioGroups = {}, checkboxGroupNames = {};
+      fields.forEach(function(f){
+        if(f.closest("[hidden]")) return; // skip hidden conditional fields
+        if(f.type==="radio"){ if(f.required) radioGroups[f.name]=true; return; }
+        if(f.type==="checkbox"){
+          var group = form.querySelectorAll("input[name='"+f.name+"']");
+          if(group.length > 1){ if(f.required) checkboxGroupNames[f.name] = true; return; }
+          if(f.required && !f.checked){ ok=false; markGroup(f); }
+          return;
+        }
+        if(f.required && !String(f.value).trim()){ ok=false; f.classList.add("ef-invalid"); }
+        else if(f.type==="email" && f.value && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(f.value)){ ok=false; f.classList.add("ef-invalid"); }
+      });
+      Object.keys(radioGroups).forEach(function(name){
+        if(!form.querySelector("input[name='"+name+"']:checked")){ ok=false; markGroup(form.querySelector("input[name='"+name+"']")); }
+      });
+      Object.keys(checkboxGroupNames).forEach(function(name){
+        if(!form.querySelector("input[name='"+name+"']:checked")){ ok=false; markGroup(form.querySelector("input[name='"+name+"']")); }
+      });
+      return ok;
+    }
+    function markGroup(input){
+      var grp = input.closest(".ef-field");
+      if(grp) grp.classList.add("ef-invalid-group");
+      else input.classList.add("ef-invalid");
+    }
+
+    function collect(){
+      var data = {};
+      var fd = new FormData(form);
+      fd.forEach(function(v,k){
+        if(data[k]===undefined){ data[k]=v; }
+        else { data[k] = [].concat(data[k], v); }
+      });
+      Object.keys(data).forEach(function(k){
+        if(Array.isArray(data[k])) data[k] = data[k].join(", ");
+      });
+      return data;
+    }
+
+    function showExit(message){
+      form.hidden = true;
+      document.getElementById("ef-exit-message").textContent = message;
+      document.getElementById("ef-exit").hidden = false;
+      root.scrollIntoView({behavior:"smooth", block:"start"});
+    }
+
+    form.addEventListener("submit", function(e){
+      e.preventDefault();
+      if(!validate()){ errEl.hidden=false; return; }
+      errEl.hidden = true;
+      var d = collect();
+      subBtn.disabled = true; subBtn.textContent = "Submitting...";
+      fetch(CONFIG.WORKER_BASE + "/submit?form=" + CONFIG.FORM_KEY + "&stage=" + stage.id, {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify(d)
+      })
+      .then(function(r){ if(!r.ok) throw new Error("submit failed"); return r.json(); })
+      .then(function(res){
+        clearState();
+        if(res && res.exited){
+          showExit(res.message || "");
+        } else {
+          form.hidden = true;
+          document.getElementById("ef-success").hidden = false;
+          root.scrollIntoView({behavior:"smooth", block:"start"});
+        }
+      })
+      .catch(function(){
+        subBtn.disabled = false; subBtn.textContent = "Submit";
+        errEl.textContent = "Something went wrong submitting this form. Please try again, or email us if it keeps happening.";
+        errEl.hidden = false;
+      });
+    });
+  }
+})();
+</script>
+</body>
+</html>
