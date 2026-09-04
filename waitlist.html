@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Earth &amp; Flesh Retreat Waitlist</title>
+<link href="https://fonts.googleapis.com/css2?family=Sorts+Mill+Goudy:ital@0;1&display=swap" rel="stylesheet">
+<style>
+@font-face {
+  font-family: 'sunflora-hksqi6';
+  font-style: normal; font-weight: 400; font-display: swap;
+  src: url('https://file.squarespace-cdn.com/content/v2/namespaces/fonts/libraries/5fad387af44df56affb45c67/assets/37ab1441-81a8-45bc-8fea-80033769339c/font.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'botanica-wh6jh9';
+  font-style: normal; font-weight: 400; font-display: swap;
+  src: url('https://file.squarespace-cdn.com/content/v2/namespaces/fonts/libraries/5fad387af44df56affb45c67/assets/a8a98bae-e7c5-481f-9112-f8c9ba117608/font.woff2') format('woff2');
+}
+/* ===== Scoped to #ef-wl only - never styles the host page body ===== */
+#ef-wl{
+  --cream:#F5F0EB;
+  --ink:#2A221E;
+  --border:#C7BCAD;
+  --muted:#8C8073;
+  --paper:#FFFFFF;
+  --paper-soft:rgba(255,255,255,.78);
+  --on-photo-shadow:0 1px 4px rgba(0,0,0,.55);
+  --font-display:"sunflora-hksqi6","Playfair Display",Georgia,"Times New Roman",serif;
+  --font-accent:"botanica-wh6jh9","Playfair Display",Georgia,serif;
+  --font-body:"Sorts Mill Goudy",Georgia,"Times New Roman",serif;
+  background:transparent;
+  color:var(--paper);
+  font-family:var(--font-body);
+  -webkit-font-smoothing:antialiased;
+  line-height:1.5;
+}
+#ef-wl *{box-sizing:border-box;}
+#ef-wl [hidden]{display:none !important;}
+#ef-wl .ef-shell{
+  max-width:760px;
+  margin:0 auto;
+  padding:8px 28px 48px;
+}
+
+#ef-wl .ef-intro{
+  font-size:clamp(18px,2.2vw,23px);
+  margin:0;
+  color:var(--paper);
+  text-shadow:var(--on-photo-shadow);
+  text-wrap:balance;
+}
+#ef-wl .ef-step-title{
+  font-family:var(--font-display);
+  font-weight:400;
+  font-size:clamp(28px,4vw,40px);
+  line-height:1.08;
+  margin:0 0 8px;
+  color:var(--paper);
+  text-shadow:var(--on-photo-shadow);
+  text-wrap:balance;
+}
+#ef-wl .ef-loading{font-size:16px;color:var(--paper);text-shadow:var(--on-photo-shadow);padding:20px 0;}
+
+/* Fields */
+#ef-wl .ef-field{display:block;margin:0 0 24px;}
+#ef-wl .ef-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+#ef-wl .ef-label{
+  display:block;
+  font-family:var(--font-display);
+  font-size:20px;
+  line-height:1.3;
+  margin:0 0 10px;
+  color:var(--paper);
+  text-shadow:var(--on-photo-shadow);
+}
+#ef-wl .ef-label em{font-style:normal;font-family:var(--font-body);font-size:15px;color:var(--paper-soft);}
+
+#ef-wl input[type=text],
+#ef-wl input[type=email],
+#ef-wl input[type=tel]{
+  width:100%;
+  font-family:var(--font-body);
+  font-size:18px;
+  color:var(--ink);
+  background:var(--paper);
+  border:1.5px solid rgba(255,255,255,.6);
+  padding:14px 20px;
+  border-radius:32px;
+  outline:none;
+  transition:border-color .2s ease, box-shadow .2s ease;
+}
+#ef-wl input:focus{
+  border-color:var(--ink);
+  box-shadow:0 0 0 3px rgba(255,255,255,.45);
+}
+#ef-wl input.ef-invalid{
+  border-color:#a8463c;box-shadow:0 0 0 1px rgba(168,70,60,.4);
+}
+
+/* Honeypot */
+#ef-wl .ef-hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;}
+
+/* Nav + buttons */
+#ef-wl .ef-nav{display:flex;gap:14px;align-items:center;justify-content:center;margin-top:36px;}
+#ef-wl .ef-btn{
+  font-family:var(--font-accent);
+  font-size:21px;
+  letter-spacing:.01em;
+  background:var(--cream);
+  color:var(--ink);
+  border:none;
+  border-radius:999px;
+  padding:18px 40px;
+  cursor:pointer;
+  box-shadow:0 2px 14px rgba(0,0,0,.28);
+  transition:transform .15s ease,background-color .2s ease;
+}
+#ef-wl .ef-btn:hover{transform:translateY(-1px);background:var(--paper);}
+#ef-wl .ef-btn:disabled{opacity:.5;cursor:default;transform:none;}
+#ef-wl .ef-error{color:#FFD7CF;font-size:17px;margin:22px 0 0;text-align:center;text-shadow:var(--on-photo-shadow);}
+#ef-wl .ef-success{text-align:center;padding:48px 10px 40px;animation:efFade .45s ease;}
+#ef-wl .ef-sparkle{
+  font-size:52px;line-height:1;margin:0 0 18px;
+  animation:efShimmer 2.8s ease-in-out infinite;
+}
+@keyframes efFade{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+@keyframes efShimmer{
+  0%,100%{opacity:1;transform:scale(1);}
+  50%{opacity:.72;transform:scale(1.09);}
+}
+@media (prefers-reduced-motion:reduce){
+  #ef-wl .ef-sparkle{animation:none;}
+}
+
+@media (max-width:560px){
+  #ef-wl .ef-shell{padding:8px 18px 40px;}
+  #ef-wl .ef-grid-2{grid-template-columns:1fr;}
+  #ef-wl .ef-btn{padding:16px 30px;font-size:19px;}
+}
+</style>
+</head>
+<body>
+
+<div id="ef-wl">
+  <div class="ef-shell">
+
+    <p class="ef-loading" id="ef-loading">Loading...</p>
+
+    <form id="ef-form" novalidate autocomplete="on" hidden>
+
+      <div class="ef-grid-2">
+        <label class="ef-field">
+          <span class="ef-label">First Name <em>(required)</em></span>
+          <input type="text" name="first_name" autocomplete="given-name" required>
+        </label>
+        <label class="ef-field">
+          <span class="ef-label">Last Name <em>(required)</em></span>
+          <input type="text" name="last_name" autocomplete="family-name" required>
+        </label>
+      </div>
+
+      <label class="ef-field">
+        <span class="ef-label">Email <em>(required)</em></span>
+        <input type="email" name="email" autocomplete="email" required>
+      </label>
+
+      <label class="ef-field">
+        <span class="ef-label">Phone <em>(required)</em></span>
+        <input type="tel" name="phone" autocomplete="tel" required>
+      </label>
+
+      <!-- Honeypot: hidden from people, catches bots. Do not remove. Not
+           part of the editable config — never surfaced in the admin. -->
+      <div class="ef-hp" aria-hidden="true">
+        <label>Website<input type="text" name="company_website" tabindex="-1" autocomplete="off"></label>
+      </div>
+
+      <p class="ef-error" id="ef-error" hidden></p>
+
+      <div class="ef-nav">
+        <button type="submit" class="ef-btn" id="ef-submit">Join the Waitlist</button>
+      </div>
+    </form>
+
+    <div class="ef-success" id="ef-success" hidden>
+      <div class="ef-sparkle" aria-hidden="true">&#x2728;</div>
+      <h3 class="ef-step-title">You&#x2019;re on the&nbsp;list!</h3>
+      <p class="ef-intro">You will be the first to know the moment the next Earth &amp; Flesh opens. Keep an eye on your inbox, something beautiful is on the&nbsp;way. &#x1F90E;</p>
+    </div>
+
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  /* ====================== CONFIG ====================== */
+  var CONFIG = {
+    WORKER_BASE: "https://kerry-forms.miriam-68c.workers.dev",
+    FORM_KEY: "waitlist"
+  };
+  /* ==================================================== */
+
+  var root    = document.getElementById("ef-wl");
+  var loadingEl = document.getElementById("ef-loading");
+  var form    = document.getElementById("ef-form");
+  var subBtn  = document.getElementById("ef-submit");
+  var errEl   = document.getElementById("ef-error");
+  var okEl    = document.getElementById("ef-success");
+  var stageId = "complete";
+
+  // Field labels/copy for this form are simple enough (4 standard fields)
+  // that the static markup above is used directly. We still confirm the
+  // config exists before showing the form, so a KV outage fails loudly
+  // instead of silently posting to a form Kerry may have reconfigured.
+  fetch(CONFIG.WORKER_BASE + "/config?form=" + CONFIG.FORM_KEY)
+    .then(function(r){ if(!r.ok) throw new Error("config fetch failed"); return r.json(); })
+    .then(function(cfg){
+      stageId = cfg.stages[0].id;
+      loadingEl.hidden = true;
+      form.hidden = false;
+    })
+    .catch(function(){
+      loadingEl.textContent = "This form couldn't load. Please refresh the page, or contact us if it keeps happening.";
+    });
+
+  function fail(msg){
+    errEl.textContent = msg;
+    errEl.hidden = false;
+  }
+
+  function validate(){
+    var ok = true;
+    var fields = form.querySelectorAll("input[required]");
+    Array.prototype.forEach.call(form.querySelectorAll(".ef-invalid"), function(e){
+      e.classList.remove("ef-invalid");
+    });
+    Array.prototype.forEach.call(fields, function(f){
+      var v = String(f.value).trim();
+      if(!v){ ok = false; f.classList.add("ef-invalid"); return; }
+      if(f.type === "email" && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)){
+        ok = false; f.classList.add("ef-invalid"); return;
+      }
+      if(f.type === "tel" && v.replace(/\D/g,"").length < 7){
+        ok = false; f.classList.add("ef-invalid");
+      }
+    });
+    return ok;
+  }
+
+  form.addEventListener("submit", function(e){
+    e.preventDefault();
+    errEl.hidden = true;
+
+    if(!validate()){
+      fail("Please fill in every field above.");
+      return;
+    }
+
+    var fd = new FormData(form);
+    var payload = {
+      firstName:       (fd.get("first_name") || "").trim(),
+      lastName:        (fd.get("last_name")  || "").trim(),
+      email:           (fd.get("email")      || "").trim(),
+      phone:           (fd.get("phone")      || "").trim(),
+      company_website: (fd.get("company_website") || "").trim()
+    };
+
+    subBtn.disabled = true;
+    subBtn.textContent = "Sending...";
+
+    fetch(CONFIG.WORKER_BASE + "/submit?form=" + CONFIG.FORM_KEY + "&stage=" + stageId, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    })
+    .then(function(r){ if(!r.ok) throw new Error("bad status " + r.status); return r.json(); })
+    .then(function(){
+      form.hidden = true;
+      okEl.hidden = false;
+      root.scrollIntoView({behavior:"smooth", block:"start"});
+    })
+    .catch(function(){
+      subBtn.disabled = false;
+      subBtn.textContent = "Join the Waitlist";
+      fail("Something went wrong. Please try again, or email us if it keeps happening.");
+    });
+  });
+})();
+</script>
+</body>
+</html>

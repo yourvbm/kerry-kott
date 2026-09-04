@@ -1,0 +1,523 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Kerry Kott Forms Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Sorts+Mill+Goudy:ital@0;1&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --cream:#F5F0EB;
+  --ink:#2A221E;
+  --border:#C7BCAD;
+  --muted:#8C8073;
+  --panel:#FFFFFF;
+  --accent:#a8463c;
+  --ok:#3f6b4a;
+  --font-display:"Playfair Display",Georgia,serif;
+  --font-body:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--cream);
+  color:var(--ink);
+  font-family:var(--font-body);
+  line-height:1.5;
+}
+[hidden]{display:none !important;}
+
+/* ---- login gate ---- */
+#admin-login{
+  max-width:380px;margin:14vh auto 0;padding:0 20px;text-align:center;
+}
+#admin-login h1{font-family:var(--font-display);font-weight:600;font-size:28px;margin:0 0 6px;}
+#admin-login p{color:var(--muted);font-size:14px;margin:0 0 24px;}
+#admin-login input{
+  width:100%;font-size:16px;padding:12px 16px;border:1.5px solid var(--border);
+  border-radius:10px;outline:none;margin-bottom:12px;background:var(--panel);
+}
+#admin-login input:focus{border-color:var(--ink);}
+#admin-login button{
+  width:100%;font-size:16px;font-weight:600;padding:12px 16px;border:none;
+  border-radius:10px;background:var(--ink);color:var(--cream);cursor:pointer;
+}
+#admin-login button:hover{opacity:.92;}
+#admin-login .login-error{color:var(--accent);font-size:14px;margin-top:12px;min-height:20px;}
+
+/* ---- app shell ---- */
+#admin-app{max-width:920px;margin:0 auto;padding:32px 20px 100px;}
+.admin-head{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:22px;}
+.admin-head h1{font-family:var(--font-display);font-weight:600;font-size:26px;margin:0;}
+.admin-head .sub{color:var(--muted);font-size:13px;}
+
+.tabs{display:flex;gap:6px;margin-bottom:22px;border-bottom:1.5px solid var(--border);}
+.tab-btn{
+  font-family:var(--font-body);font-size:15px;font-weight:600;color:var(--muted);
+  background:none;border:none;padding:10px 16px;cursor:pointer;border-bottom:2px solid transparent;
+  margin-bottom:-1.5px;
+}
+.tab-btn.active{color:var(--ink);border-bottom-color:var(--ink);}
+.tab-btn:hover{color:var(--ink);}
+
+.panel-loading{color:var(--muted);padding:30px 0;}
+.panel-error{color:var(--accent);padding:16px;background:#fdf1ef;border-radius:10px;margin-bottom:16px;white-space:pre-wrap;}
+
+.stage-card{
+  background:var(--panel);border:1.5px solid var(--border);border-radius:14px;
+  padding:20px 22px;margin-bottom:20px;
+}
+.stage-card h2{font-family:var(--font-display);font-size:19px;margin:0 0 14px;}
+.stage-row{display:flex;flex-direction:column;gap:4px;margin-bottom:6px;}
+.stage-row label{font-size:12px;font-weight:600;letter-spacing:.02em;text-transform:uppercase;color:var(--muted);}
+.stage-row input[type=text]{
+  font-size:15px;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+.tag-warning{font-size:12.5px;color:var(--accent);margin:2px 0 14px;}
+.stage-note{font-size:13.5px;font-style:italic;color:var(--muted);margin:0 0 18px;}
+
+.field-list{display:flex;flex-direction:column;gap:10px;margin-bottom:14px;}
+.field-row{
+  border:1px solid var(--border);border-radius:10px;padding:12px 14px;background:#FBF9F6;
+}
+.field-row-top{display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;}
+.field-row-top .grow{flex:1 1 220px;min-width:180px;}
+.field-row label.mini{display:block;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.02em;margin-bottom:3px;}
+.field-row input[type=text], .field-row select{
+  width:100%;font-size:14px;padding:7px 10px;border:1.5px solid var(--border);border-radius:7px;
+  background:#fff;font-family:var(--font-body);
+}
+.field-row input:disabled, .field-row select:disabled{background:#EEE9E2;color:var(--muted);cursor:not-allowed;}
+.req-toggle{display:flex;align-items:center;gap:6px;font-size:13px;white-space:nowrap;padding-top:20px;}
+.field-btns{display:flex;gap:4px;padding-top:19px;}
+.icon-btn{
+  border:1.5px solid var(--border);background:#fff;border-radius:7px;width:30px;height:30px;
+  font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+}
+.icon-btn:hover{border-color:var(--ink);}
+.icon-btn:disabled{opacity:.35;cursor:not-allowed;}
+.icon-btn.danger:hover{border-color:var(--accent);color:var(--accent);}
+
+.ghl-map{font-size:12px;color:var(--muted);margin-top:8px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;}
+.ghl-map.will-create{color:var(--ok);}
+.locked-note{font-size:11px;color:var(--muted);margin-left:6px;}
+
+.options-editor{margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);}
+.options-editor .opt-row{display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap;}
+.options-editor .opt-row input[type=text]{flex:1 1 140px;min-width:110px;}
+.options-editor .opt-soldout{display:flex;align-items:center;gap:4px;font-size:12px;white-space:nowrap;}
+.add-option-btn, .add-field-btn{
+  font-size:13px;font-weight:600;padding:7px 14px;border:1.5px dashed var(--border);
+  border-radius:8px;background:none;cursor:pointer;color:var(--ink);
+}
+.add-option-btn:hover, .add-field-btn:hover{border-color:var(--ink);}
+
+.save-row{display:flex;align-items:center;gap:14px;margin-top:6px;}
+.save-btn{
+  font-size:15px;font-weight:600;padding:11px 26px;border:none;border-radius:999px;
+  background:var(--ink);color:var(--cream);cursor:pointer;
+}
+.save-btn:hover{opacity:.92;}
+.save-btn:disabled{opacity:.5;cursor:default;}
+.save-msg{font-size:14px;}
+.save-msg.ok{color:var(--ok);}
+.save-msg.err{color:var(--accent);white-space:pre-wrap;}
+
+.admin-footer{
+  position:fixed;left:0;right:0;bottom:0;background:var(--panel);
+  border-top:1.5px solid var(--border);padding:12px 20px;text-align:center;font-size:13.5px;
+}
+.admin-footer a{color:var(--ink);font-weight:600;}
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN GATE ============ -->
+<div id="admin-login">
+  <h1>Kerry Kott Forms Admin</h1>
+  <p>Enter the admin password to edit form fields, tags, and copy.</p>
+  <input type="password" id="login-pw" placeholder="Password" autocomplete="current-password">
+  <button type="button" id="login-btn">Log In</button>
+  <p class="login-error" id="login-error"></p>
+</div>
+
+<!-- ============ MAIN APP (shown after login) ============ -->
+<div id="admin-app" hidden>
+  <div class="admin-head">
+    <h1>Kerry Kott Forms Admin</h1>
+    <div class="sub">Edit field labels, options, tags &amp; evergreen copy — no code push needed.</div>
+  </div>
+
+  <div class="tabs" id="tabs"></div>
+  <div id="panel"></div>
+</div>
+
+<div class="admin-footer">
+  Need something else changed? <a href="https://ticket.yourvbm.com" target="_blank" rel="noopener">Submit a request →</a>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var WORKER_BASE = "https://kerry-forms.miriam-68c.workers.dev";
+  var FORMS = [
+    {key:"application", label:"Application"},
+    {key:"intake", label:"Intake"},
+    {key:"waitlist", label:"Waitlist"}
+  ];
+  var TYPE_OPTIONS = ["text","email","tel","date","select","textarea","radio","checkbox-group","checkbox"];
+  var FOLDER_FORMS = {application:true, intake:true}; // forms that CAN create new custom fields
+
+  var pw = null;
+  var state = {activeForm: "application", configs: {}, saveMsg: {}, loading: {}};
+
+  var loginEl = document.getElementById("admin-login");
+  var appEl   = document.getElementById("admin-app");
+  var loginBtn = document.getElementById("login-btn");
+  var loginPw  = document.getElementById("login-pw");
+  var loginErr = document.getElementById("login-error");
+  var tabsEl = document.getElementById("tabs");
+  var panelEl = document.getElementById("panel");
+
+  function esc(s){
+    return String(s == null ? "" : s)
+      .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  }
+
+  function authHeaders(){
+    return {"Authorization": "Bearer " + pw, "Content-Type": "application/json"};
+  }
+
+  /* ---------------- LOGIN ---------------- */
+  loginBtn.addEventListener("click", doLogin);
+  loginPw.addEventListener("keydown", function(e){ if(e.key === "Enter") doLogin(); });
+
+  function doLogin(){
+    var candidate = loginPw.value;
+    if(!candidate){ return; }
+    loginErr.textContent = "";
+    loginBtn.disabled = true; loginBtn.textContent = "Checking...";
+    fetch(WORKER_BASE + "/admin/login", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({password: candidate})
+    })
+    .then(function(r){ return r.json().then(function(body){ return {ok: r.ok, body: body}; }); })
+    .then(function(res){
+      loginBtn.disabled = false; loginBtn.textContent = "Log In";
+      if(!res.ok){ loginErr.textContent = "Wrong password. Please try again."; return; }
+      pw = candidate;
+      try{ sessionStorage.setItem("kk_admin_pw", pw); }catch(e){}
+      showApp();
+    })
+    .catch(function(){
+      loginBtn.disabled = false; loginBtn.textContent = "Log In";
+      loginErr.textContent = "Couldn't reach the server. Please try again.";
+    });
+  }
+
+  // Resume a session if the password is already stored in sessionStorage.
+  try{
+    var stored = sessionStorage.getItem("kk_admin_pw");
+    if(stored){ pw = stored; }
+  }catch(e){}
+
+  function showApp(){
+    loginEl.hidden = true;
+    appEl.hidden = false;
+    renderTabs();
+    loadForm(state.activeForm);
+  }
+
+  if(pw){ showApp(); }
+
+  /* ---------------- DATA LOADING ---------------- */
+  function loadForm(key){
+    if(state.configs[key]){ renderPanel(); return; }
+    state.loading[key] = true;
+    renderPanel();
+    fetch(WORKER_BASE + "/admin/config?form=" + key, {headers: authHeaders()})
+      .then(function(r){
+        if(r.status === 401){ throw new Error("__unauthorized__"); }
+        if(!r.ok) throw new Error("Failed to load " + key + " config (HTTP " + r.status + ")");
+        return r.json();
+      })
+      .then(function(cfg){
+        state.loading[key] = false;
+        state.configs[key] = cfg;
+        renderPanel();
+      })
+      .catch(function(err){
+        state.loading[key] = false;
+        if(err.message === "__unauthorized__"){
+          try{ sessionStorage.removeItem("kk_admin_pw"); }catch(e){}
+          pw = null;
+          appEl.hidden = true;
+          loginEl.hidden = false;
+          loginErr.textContent = "Your session expired. Please log in again.";
+          return;
+        }
+        state.configs[key] = {__error: err.message};
+        renderPanel();
+      });
+  }
+
+  /* ---------------- TABS ---------------- */
+  function renderTabs(){
+    tabsEl.innerHTML = FORMS.map(function(f){
+      return '<button type="button" class="tab-btn'+(f.key===state.activeForm?' active':'')+'" data-form="'+f.key+'">'+esc(f.label)+'</button>';
+    }).join("");
+    Array.prototype.forEach.call(tabsEl.querySelectorAll(".tab-btn"), function(btn){
+      btn.addEventListener("click", function(){
+        state.activeForm = btn.getAttribute("data-form");
+        renderTabs();
+        loadForm(state.activeForm);
+      });
+    });
+  }
+
+  /* ---------------- PANEL ---------------- */
+  function renderPanel(){
+    var key = state.activeForm;
+    if(state.loading[key]){
+      panelEl.innerHTML = '<p class="panel-loading">Loading '+esc(key)+' config...</p>';
+      return;
+    }
+    var cfg = state.configs[key];
+    if(!cfg){ panelEl.innerHTML = ""; return; }
+    if(cfg.__error){
+      panelEl.innerHTML = '<p class="panel-error">Couldn\'t load this form: '+esc(cfg.__error)+'</p>';
+      return;
+    }
+
+    var html = "";
+    cfg.stages.forEach(function(stage, sIdx){
+      html += renderStage(key, cfg, stage, sIdx);
+    });
+    html += '<div class="save-row">'
+      + '<button type="button" class="save-btn" id="save-btn-'+key+'">Save Changes</button>'
+      + '<span class="save-msg" id="save-msg-'+key+'"></span>'
+      + '</div>';
+    panelEl.innerHTML = html;
+
+    wirePanelEvents(key, cfg);
+
+    var msg = state.saveMsg[key];
+    if(msg){
+      var el = document.getElementById("save-msg-"+key);
+      el.textContent = msg.text;
+      el.className = "save-msg " + (msg.ok ? "ok" : "err");
+    }
+  }
+
+  function renderStage(formKey, cfg, stage, sIdx){
+    var html = '<div class="stage-card" data-stage-idx="'+sIdx+'">';
+    html += '<h2>Stage: '+esc(stage.id)+'</h2>';
+    html += '<div class="stage-row"><label>GHL Tag</label>'
+      + '<input type="text" class="tag-input" data-stage-idx="'+sIdx+'" value="'+esc(stage.tag)+'"></div>';
+    html += '<p class="tag-warning">Must exactly match what a GHL workflow trigger is watching for — a typo silently breaks the automation without breaking the form.</p>';
+    if(stage.note){
+      html += '<p class="stage-note">'+esc(stage.note)+'</p>';
+    }
+    html += '<div class="field-list">';
+    stage.fields.forEach(function(field, fIdx){
+      html += renderField(formKey, stage, field, sIdx, fIdx);
+    });
+    html += '</div>';
+    html += '<button type="button" class="add-field-btn" data-add-field-stage="'+sIdx+'">+ Add field</button>';
+    html += '</div>';
+    return html;
+  }
+
+  function renderField(formKey, stage, field, sIdx, fIdx){
+    var isStandard = !!field.standard;
+    var html = '<div class="field-row" data-field-idx="'+fIdx+'">';
+    html += '<div class="field-row-top">';
+
+    html += '<div class="grow"><label class="mini">Label</label>'
+      + '<input type="text" class="f-label" value="'+esc(field.label)+'"></div>';
+
+    html += '<div><label class="mini">Type</label>'
+      + '<select class="f-type"'+(isStandard?' disabled':'')+'>'
+      + TYPE_OPTIONS.map(function(t){ return '<option value="'+t+'"'+(t===field.type?' selected':'')+'>'+t+'</option>'; }).join("")
+      + '</select></div>';
+
+    html += '<div class="req-toggle"><label><input type="checkbox" class="f-required"'+(field.required?' checked':'')+'> Required</label></div>';
+
+    html += '<div class="field-btns">'
+      + '<button type="button" class="icon-btn f-up" title="Move up">↑</button>'
+      + '<button type="button" class="icon-btn f-down" title="Move down">↓</button>'
+      + '<button type="button" class="icon-btn danger f-delete" title="Delete field"'+(isStandard?' disabled':'')+'>✕</button>'
+      + '</div>';
+
+    html += '</div>'; // field-row-top
+
+    if(field.locked){
+      html += '<span class="locked-note">used to match this contact — don\'t delete</span>';
+    }
+
+    if(!isStandard){
+      var mapText = field.ghlName
+        ? 'saves to GHL: ' + field.ghlName + ' (' + (field.ghlKey||'pending') + ')'
+        : '(will create a new GHL field named "' + field.label + '" on save)';
+      html += '<div class="ghl-map'+(field.ghlName?'':' will-create')+'">→ ' + esc(mapText) + '</div>';
+    } else {
+      html += '<div class="ghl-map">→ native GHL contact field (' + esc(field.standardKey||"") + ')</div>';
+    }
+
+    if((field.type === "radio" || field.type === "checkbox-group") && field.type !== "select"){
+      html += renderOptionsEditor(field);
+    }
+
+    html += '</div>'; // field-row
+    return html;
+  }
+
+  function renderOptionsEditor(field){
+    var html = '<div class="options-editor">';
+    (field.options||[]).forEach(function(opt, oIdx){
+      html += '<div class="opt-row" data-opt-idx="'+oIdx+'">'
+        + '<input type="text" class="opt-label" placeholder="Label" value="'+esc(opt.label)+'">'
+        + '<input type="text" class="opt-value" placeholder="Value" value="'+esc(opt.value)+'">'
+        + '<label class="opt-soldout"><input type="checkbox" class="opt-soldout-cb"'+(opt.soldOut?' checked':'')+'> Sold out</label>'
+        + '<button type="button" class="icon-btn opt-delete" title="Remove option">✕</button>'
+        + '</div>';
+    });
+    html += '<button type="button" class="add-option-btn">+ Add option</button>';
+    html += '</div>';
+    return html;
+  }
+
+  /* ---------------- EVENTS ---------------- */
+  function wirePanelEvents(formKey, cfg){
+    // Stage tag edits
+    Array.prototype.forEach.call(panelEl.querySelectorAll(".tag-input"), function(inp){
+      inp.addEventListener("input", function(){
+        var sIdx = +inp.getAttribute("data-stage-idx");
+        cfg.stages[sIdx].tag = inp.value;
+      });
+    });
+
+    Array.prototype.forEach.call(panelEl.querySelectorAll(".stage-card"), function(stageEl){
+      var sIdx = +stageEl.getAttribute("data-stage-idx");
+      var stage = cfg.stages[sIdx];
+
+      Array.prototype.forEach.call(stageEl.querySelectorAll(".field-row"), function(rowEl){
+        var fIdx = +rowEl.getAttribute("data-field-idx");
+        var field = stage.fields[fIdx];
+
+        rowEl.querySelector(".f-label").addEventListener("input", function(e){
+          field.label = e.target.value;
+          // Live-update the "will create" preview text without a full re-render.
+          if(!field.ghlName){
+            var mapEl = rowEl.querySelector(".ghl-map");
+            if(mapEl) mapEl.textContent = '→ (will create a new GHL field named "' + field.label + '" on save)';
+          }
+        });
+        var typeSel = rowEl.querySelector(".f-type");
+        if(!typeSel.disabled){
+          typeSel.addEventListener("change", function(e){
+            field.type = e.target.value;
+            renderPanel();
+          });
+        }
+        rowEl.querySelector(".f-required").addEventListener("change", function(e){
+          field.required = e.target.checked;
+        });
+        rowEl.querySelector(".f-up").addEventListener("click", function(){
+          if(fIdx > 0){
+            stage.fields.splice(fIdx-1, 0, stage.fields.splice(fIdx,1)[0]);
+            renderPanel();
+          }
+        });
+        rowEl.querySelector(".f-down").addEventListener("click", function(){
+          if(fIdx < stage.fields.length-1){
+            stage.fields.splice(fIdx+1, 0, stage.fields.splice(fIdx,1)[0]);
+            renderPanel();
+          }
+        });
+        var delBtn = rowEl.querySelector(".f-delete");
+        if(!delBtn.disabled){
+          delBtn.addEventListener("click", function(){
+            if(!confirm('Delete the field "'+field.label+'"? This does not delete anything already saved in GHL, it just removes it from this form.')) return;
+            stage.fields.splice(fIdx, 1);
+            renderPanel();
+          });
+        }
+
+        // Options editor
+        var optEditor = rowEl.querySelector(".options-editor");
+        if(optEditor){
+          Array.prototype.forEach.call(optEditor.querySelectorAll(".opt-row"), function(optRow){
+            var oIdx = +optRow.getAttribute("data-opt-idx");
+            var opt = field.options[oIdx];
+            optRow.querySelector(".opt-label").addEventListener("input", function(e){ opt.label = e.target.value; });
+            optRow.querySelector(".opt-value").addEventListener("input", function(e){ opt.value = e.target.value; });
+            optRow.querySelector(".opt-soldout-cb").addEventListener("change", function(e){ opt.soldOut = e.target.checked; });
+            optRow.querySelector(".opt-delete").addEventListener("click", function(){
+              field.options.splice(oIdx, 1);
+              renderPanel();
+            });
+          });
+          optEditor.querySelector(".add-option-btn").addEventListener("click", function(){
+            field.options = field.options || [];
+            field.options.push({label:"New Option", value:"New Option"});
+            renderPanel();
+          });
+        }
+      });
+
+      var addFieldBtn = stageEl.querySelector("[data-add-field-stage]");
+      addFieldBtn.addEventListener("click", function(){
+        if(!FOLDER_FORMS[formKey]){
+          alert("This form (" + formKey + ") has no GHL custom-field folder, so new fields can't be added here. Use the ticket system for anything beyond the built-in fields.");
+          return;
+        }
+        stage.fields.push({
+          id: "custom_" + Date.now().toString(36),
+          label: "New Field",
+          type: "textarea",
+          required: false,
+          standard: false
+        });
+        renderPanel();
+      });
+    });
+
+    // Save button
+    var saveBtn = document.getElementById("save-btn-" + formKey);
+    saveBtn.addEventListener("click", function(){
+      saveBtn.disabled = true; saveBtn.textContent = "Saving...";
+      var msgEl = document.getElementById("save-msg-" + formKey);
+      msgEl.textContent = ""; msgEl.className = "save-msg";
+      fetch(WORKER_BASE + "/admin/config", {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({form: formKey, config: cfg})
+      })
+      .then(function(r){ return r.json().then(function(body){ return {ok:r.ok, status:r.status, body:body}; }); })
+      .then(function(res){
+        saveBtn.disabled = false; saveBtn.textContent = "Save Changes";
+        if(!res.ok){
+          var detail = (res.body && (res.body.detail || res.body.error)) || ("HTTP " + res.status);
+          state.saveMsg[formKey] = {ok:false, text: "Save failed: " + detail};
+          renderPanel();
+          return;
+        }
+        state.configs[formKey] = res.body; // reflects real ghlKey/ghlFieldId for any new fields
+        state.saveMsg[formKey] = {ok:true, text: "Saved."};
+        renderPanel();
+      })
+      .catch(function(err){
+        saveBtn.disabled = false; saveBtn.textContent = "Save Changes";
+        state.saveMsg[formKey] = {ok:false, text: "Save failed: " + err.message};
+        renderPanel();
+      });
+    });
+  }
+})();
+</script>
+</body>
+</html>

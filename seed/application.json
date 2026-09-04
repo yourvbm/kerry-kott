@@ -1,0 +1,295 @@
+{
+  "title": "Earth & Flesh Application",
+  "source": "Earth & Flesh Application",
+  "stages": [
+    {
+      "id": "started",
+      "tag": "Retreat Application - Started",
+      "removeTags": [],
+      "note": "Arms the abandoned-cart email sequence for anyone who doesn't finish the application.",
+      "fields": [
+        {
+          "id": "first_name",
+          "label": "First Name",
+          "type": "text",
+          "required": true,
+          "standard": true,
+          "standardKey": "firstName"
+        },
+        {
+          "id": "last_name",
+          "label": "Last Name",
+          "type": "text",
+          "required": true,
+          "standard": true,
+          "standardKey": "lastName"
+        },
+        {
+          "id": "email",
+          "label": "Email",
+          "type": "text",
+          "required": true,
+          "standard": true,
+          "standardKey": "email",
+          "locked": true
+        },
+        {
+          "id": "newsletter_optin",
+          "label": "Sign up for news and updates",
+          "type": "checkbox",
+          "required": false,
+          "standard": false,
+          "ghlKey": "contact.sign_up_for_news_and_updates",
+          "ghlName": "Sign up for news and updates",
+          "dataType": "LARGE_TEXT",
+          "ghlFieldId": "PgC6nTZA2VZcp5KU8LVJ"
+        },
+        {
+          "id": "phone",
+          "label": "Phone",
+          "type": "tel",
+          "required": true,
+          "standard": true,
+          "standardKey": "phone"
+        },
+        {
+          "id": "country",
+          "label": "Country",
+          "type": "select",
+          "required": false,
+          "standard": true,
+          "standardKey": "country"
+        },
+        {
+          "id": "social_links",
+          "label": "Link to Instagram, Facebook, or website",
+          "type": "textarea",
+          "required": false,
+          "standard": false,
+          "ghlKey": "contact.links_to_instagram_facebook_and_website",
+          "ghlName": "Link to Instagram, Facebook, or website",
+          "dataType": "LARGE_TEXT",
+          "ghlFieldId": "d5zBPwMV1MMSBcaFvgHp"
+        }
+      ]
+    },
+    {
+      "id": "complete",
+      "tag": "Retreat Application - Complete",
+      "removeTags": [
+        "Retreat Application - Started"
+      ],
+      "note": "Marks the application finished and removes them from the abandoned-cart sequence.",
+      "fields": [
+        {
+          "id": "why_speaks",
+          "label": "What about this retreat calls to you?",
+          "type": "textarea",
+          "required": true,
+          "standard": false,
+          "ghlKey": "contact.what_about_this_retreat_speaks_to_you",
+          "ghlName": "What about this retreat speaks to you",
+          "dataType": "LARGE_TEXT",
+          "ghlFieldId": "iGuxhSuUZVofasxGpsC4"
+        },
+        {
+          "id": "what_receive",
+          "label": "If you could receive anything from your participation in Earth & Flesh, what would it be? What would make this experience feel worth far more than the investment you've made?",
+          "type": "textarea",
+          "required": true,
+          "standard": false,
+          "ghlKey": "contact.if_you_could_receive_anything_from_your_participation_in_earth__flesh_what_would_it_be",
+          "ghlName": "If you could receive anything from your participation in Earth & Flesh what would it be",
+          "dataType": "LARGE_TEXT",
+          "ghlFieldId": "mc8ZvYEpLGEXfdsNUbig"
+        },
+        {
+          "id": "fears_resistance",
+          "label": "What fears, doubts, or resistance do you have about attending this retreat?",
+          "type": "textarea",
+          "required": true,
+          "standard": false,
+          "ghlKey": "contact.what_fears_doubts_or_resistance_do_you_have_about_attending_this_retreat",
+          "ghlName": "What fears doubts or resistance do you have about attending this retreat",
+          "dataType": "LARGE_TEXT",
+          "ghlFieldId": "TNuUlPAYL6zHhGUD08Er"
+        },
+        {
+          "id": "health_info",
+          "label": "Please share any important information regarding your mental health, emotional wellbeing, trauma history, physical health, or accessibility needs.",
+          "type": "textarea",
+          "required": true,
+          "standard": false,
+          "ghlKey": "contact.please_share_any_important_information_regarding_your_mental_health_emotional_wellbeing_trauma_history_physical_health_or_accessibility_needs",
+          "ghlName": "Please share any important information regarding your mental health emotional wellbeing trauma history physical health or accessibility needs",
+          "dataType": "LARGE_TEXT",
+          "ghlFieldId": "gfuxQN1XrCgMhzmzvm2D"
+        },
+        {
+          "id": "dietary",
+          "label": "Do you have any food sensitivities, allergies, or dietary requests?",
+          "type": "textarea",
+          "required": true,
+          "standard": false,
+          "ghlKey": "contact.do_you_have_any_food_sensitivities_allergies_or_dietary_requests",
+          "ghlName": "Do you have any food sensitivities allergies or dietary requests",
+          "dataType": "LARGE_TEXT",
+          "note": "While we will do our best to accommodate allergies and dietary needs, not all requests may be possible.",
+          "ghlFieldId": "qynGauCfhD2h9lGvfUCf"
+        },
+        {
+          "id": "photo_reflection",
+          "label": "Photography and videography are a part of this retreat and are considered part of the medicine of this experience.",
+          "type": "textarea",
+          "required": true,
+          "standard": false,
+          "ghlKey": "contact.photography_and_videography_are_a_part_of_this_retreat_and_are_considered_part_of_the_medicine_of_this_experience",
+          "ghlName": "Photography and videography are a part of this retreat and are considered part of the medicine of this experience",
+          "dataType": "LARGE_TEXT",
+          "note": "Does this feel edgy for you? What thoughts, feelings, fears, or curiosities arise when you consider this?",
+          "ghlFieldId": "kDK11tq0jm0fuuX6P40H"
+        },
+        {
+          "id": "worked_with_kerry",
+          "label": "Have you worked with Kerry before? If yes, please share in what capacity?",
+          "type": "textarea",
+          "required": true,
+          "standard": false,
+          "ghlKey": "contact.have_you_worked_with_kerry_before_if_yes_please_share_in_what_capacity",
+          "ghlName": "Have you worked with Kerry before If yes please share in what capacity",
+          "dataType": "LARGE_TEXT",
+          "ghlFieldId": "dxz8rOst05cFC0YZ7CfE"
+        },
+        {
+          "id": "retreat_selection",
+          "label": "Retreat Selection",
+          "type": "radio",
+          "required": true,
+          "standard": false,
+          "ghlKey": "contact.retreat_selection",
+          "ghlName": "Retreat Selection",
+          "dataType": "LARGE_TEXT",
+          "note": "Please select the retreat experience you are applying for. Early bird babe pricing ends June 30, 2026.",
+          "options": [
+            {
+              "label": "Earth & Flesh \u2014 $2900",
+              "value": "Earth & Flesh $2900"
+            },
+            {
+              "label": "VIP Earth & Flesh \u2014 $3300",
+              "value": "VIP Earth & Flesh $3300"
+            }
+          ],
+          "ghlFieldId": "D453aEV3rd4oZJk989I1"
+        },
+        {
+          "id": "payment_preference",
+          "label": "Payment Preference",
+          "type": "radio",
+          "required": true,
+          "standard": false,
+          "ghlKey": "contact.payment_preference",
+          "ghlName": "Payment Preference",
+          "dataType": "LARGE_TEXT",
+          "note": "If accepted into the retreat, which payment option would you most likely choose?",
+          "options": [
+            {
+              "label": "Pay in Full \u2014 $2900",
+              "value": "Pay in Full $2900"
+            },
+            {
+              "label": "2 Payments \u2014 $1,500/mo",
+              "value": "2 Payments $1,500/mo"
+            },
+            {
+              "label": "3 Payments \u2014 $1000/mo",
+              "value": "3 Payments $1000/mo"
+            },
+            {
+              "label": "VIP - Pay in Full \u2014 $3300",
+              "value": "VIP - Pay in Full $3300"
+            },
+            {
+              "label": "VIP - 2 Payments \u2014 $1700/mo",
+              "value": "VIP - 2 Payments $1700/mo"
+            },
+            {
+              "label": "VIP - 3 Payments \u2014 $1,133/mo",
+              "value": "VIP - 3 Payments $1,133/mo"
+            }
+          ],
+          "ghlFieldId": "j1xJulbP9PQYi2Hbls4E"
+        },
+        {
+          "id": "lodging_options",
+          "label": "Lodging Options",
+          "type": "checkbox-group",
+          "required": true,
+          "standard": false,
+          "ghlKey": "contact.lodging_options",
+          "ghlName": "Lodging Options",
+          "dataType": "LARGE_TEXT",
+          "note": "Please select at least two options you would genuinely be willing to stay in.",
+          "options": [
+            {
+              "label": "Bring Your Own Camping \u2014 $included",
+              "value": "Bring Your Own Camping $included"
+            },
+            {
+              "label": "Hammock Tent (sleeps 1) \u2014 $165",
+              "value": "Hammock Tent (sleeps 1) $165"
+            },
+            {
+              "label": "Private Woodland Tent (sleeps 1) \u2014 $280",
+              "value": "Private Woodland Tent (sleeps 1) $280"
+            },
+            {
+              "label": "Shared Stargazer Bell Tent (sleeps 2) \u2014 $390",
+              "value": "Shared Stargazer Bell Tent (sleeps 2) $390",
+              "soldOut": true
+            },
+            {
+              "label": "Private Bell Tent (sleeps 1) \u2014 $510",
+              "value": "Private Bell Tent (sleeps 1) $510"
+            }
+          ],
+          "ghlFieldId": "Ow3y73FojQ6PIF23CIbh"
+        },
+        {
+          "id": "support_interest",
+          "label": "Support Opportunities",
+          "type": "textarea",
+          "required": true,
+          "standard": false,
+          "ghlKey": "contact.support_opportunities",
+          "ghlName": "Support Opportunities",
+          "dataType": "LARGE_TEXT",
+          "note": "Opportunities may be available to support the retreat through fire tending, setup and breakdown, transportation, photography, food support, and other retreat needs. If you're interested, please share what types of support call to you. Depending on the role and level of support, a partial tuition discount may be available.",
+          "ghlFieldId": "di0XQOaNyGkbVyJ7HrUZ"
+        },
+        {
+          "id": "how_heard",
+          "label": "How did you learn about this retreat?",
+          "type": "text",
+          "required": true,
+          "standard": false,
+          "ghlKey": "contact.how_did_you_learn_about_this_retreat",
+          "ghlName": "How did you learn about this retreat",
+          "dataType": "TEXT",
+          "ghlFieldId": "Bf47qHvB5jQmPw1KXNMy"
+        },
+        {
+          "id": "anything_else",
+          "label": "Is there anything else you would like Kerry to know about you?",
+          "type": "textarea",
+          "required": true,
+          "standard": false,
+          "ghlKey": "contact.is_there_anything_else_you_would_like_kerry_to_know_about_you",
+          "ghlName": "Is there anything else you would like Kerry to know about you",
+          "dataType": "LARGE_TEXT",
+          "ghlFieldId": "jCysb4QzKro9Iq6WQjuK"
+        }
+      ]
+    }
+  ]
+}

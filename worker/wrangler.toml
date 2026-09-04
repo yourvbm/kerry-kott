@@ -1,0 +1,9 @@
+name = "kerry-forms"
+main = "worker.js"
+compatibility_date = "2026-08-24"
+account_id = "68cfe2f9b9b42254c57111587f9bcc34"
+workers_dev = true
+
+[[kv_namespaces]]
+binding = "CONFIG"
+id = "47f15cbe4dd8424d9684baff765af842"

@@ -1,0 +1,535 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Earth &amp; Flesh Application</title>
+<link href="https://fonts.googleapis.com/css2?family=Sorts+Mill+Goudy:ital@0;1&display=swap" rel="stylesheet">
+<style>
+@font-face {
+  font-family: 'sunflora-hksqi6';
+  font-style: normal; font-weight: 400; font-display: swap;
+  src: url('https://file.squarespace-cdn.com/content/v2/namespaces/fonts/libraries/5fad387af44df56affb45c67/assets/37ab1441-81a8-45bc-8fea-80033769339c/font.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'botanica-wh6jh9';
+  font-style: normal; font-weight: 400; font-display: swap;
+  src: url('https://file.squarespace-cdn.com/content/v2/namespaces/fonts/libraries/5fad387af44df56affb45c67/assets/a8a98bae-e7c5-481f-9112-f8c9ba117608/font.woff2') format('woff2');
+}
+/* ===== Scoped to #ef-app only - never styles the host page body ===== */
+#ef-app{
+  --cream:#F5F0EB;
+  --ink:#2A221E;
+  --border:#C7BCAD;
+  --muted:#8C8073;
+  --font-display:"sunflora-hksqi6","Playfair Display",Georgia,"Times New Roman",serif;
+  --font-accent:"botanica-wh6jh9","Playfair Display",Georgia,serif;
+  --font-body:"Sorts Mill Goudy",Georgia,"Times New Roman",serif;
+  background:var(--cream);
+  color:var(--ink);
+  font-family:var(--font-body);
+  -webkit-font-smoothing:antialiased;
+  line-height:1.5;
+}
+#ef-app *{box-sizing:border-box;}
+#ef-app [hidden]{display:none !important;}
+#ef-app .ef-shell{
+  max-width:760px;
+  margin:0 auto;
+  padding:48px 28px 64px;
+}
+
+/* Header */
+#ef-app .ef-head{margin-bottom:28px;}
+#ef-app .ef-title{
+  font-family:var(--font-display);
+  font-weight:400;
+  font-size:clamp(38px,6vw,62px);
+  line-height:1.02;
+  margin:0;
+  color:var(--ink);
+}
+#ef-app .ef-intro{
+  font-size:clamp(18px,2.2vw,23px);
+  margin:0;
+  color:var(--ink);
+}
+#ef-app .ef-step-intro{margin:0 0 30px;}
+
+/* Progress */
+#ef-app .ef-progress{display:flex;align-items:center;gap:14px;margin:8px 0 34px;}
+#ef-app .ef-progress-bar{flex:1;height:4px;background:rgba(42,34,30,.14);border-radius:999px;overflow:hidden;}
+#ef-app .ef-progress-fill{display:block;height:100%;width:33%;background:var(--ink);border-radius:999px;transition:width .4s ease;}
+#ef-app .ef-progress-label{font-family:var(--font-body);font-size:15px;letter-spacing:.04em;color:var(--muted);white-space:nowrap;}
+
+/* Steps */
+#ef-app .ef-step{display:none;animation:efFade .45s ease;}
+#ef-app .ef-step.is-active{display:block;}
+@keyframes efFade{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+#ef-app .ef-step-title{
+  font-family:var(--font-display);
+  font-weight:400;
+  font-size:clamp(28px,4vw,40px);
+  line-height:1.08;
+  margin:0 0 8px;
+  color:var(--ink);
+}
+
+/* Fields */
+#ef-app .ef-field{display:block;margin:0 0 24px;}
+#ef-app .ef-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+#ef-app .ef-label{
+  display:block;
+  font-family:var(--font-display);
+  font-size:20px;
+  line-height:1.3;
+  margin:0 0 10px;
+  color:var(--ink);
+}
+#ef-app .ef-label em{font-style:normal;font-family:var(--font-body);font-size:15px;color:var(--muted);}
+#ef-app .ef-help{display:block;font-size:15px;color:var(--muted);margin:-2px 0 10px;line-height:1.45;}
+#ef-app .ef-note{font-size:16px;color:var(--ink);opacity:.82;margin:0 0 14px;line-height:1.5;}
+#ef-app .ef-note-q{opacity:1;font-style:italic;}
+
+#ef-app input[type=text],
+#ef-app input[type=email],
+#ef-app input[type=tel],
+#ef-app .ef-select,
+#ef-app textarea{
+  width:100%;
+  font-family:var(--font-body);
+  font-size:18px;
+  color:var(--ink);
+  background:transparent;
+  border:1.5px solid var(--border);
+  padding:14px 20px;
+  border-radius:32px;
+  outline:none;
+  transition:border-color .2s ease, box-shadow .2s ease;
+}
+#ef-app textarea{border-radius:22px;resize:vertical;line-height:1.5;}
+#ef-app .ef-select{appearance:none;-webkit-appearance:none;cursor:pointer;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%232A221E' stroke-width='2'><path d='M6 9l6 6 6-6'/></svg>");
+  background-repeat:no-repeat;background-position:right 18px center;padding-right:46px;}
+#ef-app input:focus,#ef-app textarea:focus,#ef-app .ef-select:focus{
+  border-color:var(--ink);
+  box-shadow:0 0 0 1px var(--ink);
+}
+#ef-app input.ef-invalid,#ef-app textarea.ef-invalid,#ef-app .ef-select.ef-invalid{
+  border-color:#a8463c;box-shadow:0 0 0 1px rgba(168,70,60,.4);
+}
+#ef-app .ef-field.ef-invalid-group .ef-label{color:#a8463c;}
+
+/* Checkboxes & radios */
+#ef-app .ef-check,#ef-app .ef-radio{
+  display:flex;align-items:flex-start;gap:12px;
+  font-size:18px;cursor:pointer;margin:0 0 12px;line-height:1.4;
+}
+#ef-app .ef-check input,#ef-app .ef-radio input{
+  appearance:none;-webkit-appearance:none;
+  flex:0 0 auto;width:22px;height:22px;margin-top:1px;
+  border:1.5px solid var(--border);background:transparent;cursor:pointer;
+  transition:all .15s ease;
+}
+#ef-app .ef-check input{border-radius:6px;}
+#ef-app .ef-radio input{border-radius:50%;}
+#ef-app .ef-check input:checked,#ef-app .ef-radio input:checked{
+  background:var(--ink);border-color:var(--ink);
+}
+#ef-app .ef-check input:checked{
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23F5F0EB' stroke-width='3'><path d='M5 12l5 5L20 7'/></svg>");
+  background-repeat:no-repeat;background-position:center;
+}
+#ef-app .ef-radio input:checked{box-shadow:inset 0 0 0 4px var(--cream);}
+#ef-app .ef-price{font-style:normal;color:var(--muted);font-family:var(--font-body);}
+#ef-app .ef-check-disabled{opacity:.55;cursor:not-allowed;}
+#ef-app .ef-check-disabled input{cursor:not-allowed;}
+#ef-app .ef-soldout{
+  font-style:normal;font-family:var(--font-body);
+  font-size:12px;letter-spacing:.08em;
+  color:#a8463c;border:1.5px solid #a8463c;border-radius:999px;
+  padding:2px 10px;margin-left:6px;white-space:nowrap;vertical-align:middle;
+}
+
+/* Nav + buttons */
+#ef-app .ef-nav{display:flex;gap:14px;align-items:center;margin-top:36px;}
+#ef-app .ef-btn{
+  font-family:var(--font-accent);
+  font-size:21px;
+  letter-spacing:.01em;
+  background:var(--ink);
+  color:var(--cream);
+  border:none;
+  border-radius:999px;
+  padding:18px 40px;
+  cursor:pointer;
+  transition:transform .15s ease,opacity .2s ease;
+  margin-left:auto;
+}
+#ef-app .ef-btn:hover{transform:translateY(-1px);opacity:.92;}
+#ef-app .ef-btn:disabled{opacity:.5;cursor:default;transform:none;}
+#ef-app .ef-btn-ghost{
+  background:transparent;color:var(--ink);
+  border:1.5px solid var(--border);margin-left:0;
+}
+#ef-app .ef-error{color:#a8463c;font-size:17px;margin:22px 0 0;}
+#ef-app .ef-success{text-align:center;padding:40px 10px;}
+#ef-app .ef-loading{font-size:16px;color:var(--muted);padding:20px 0;}
+
+@media (max-width:560px){
+  #ef-app .ef-shell{padding:32px 18px 48px;}
+  #ef-app .ef-grid-2{grid-template-columns:1fr;}
+  #ef-app .ef-btn{padding:16px 30px;font-size:19px;}
+}
+</style>
+</head>
+<body>
+
+<div id="ef-app">
+  <div class="ef-shell">
+
+    <!-- Header (persists across all pages) -->
+    <header class="ef-head">
+      <h2 class="ef-title">Earth &amp; Flesh Application</h2>
+    </header>
+
+    <!-- Progress -->
+    <div class="ef-progress" aria-hidden="true">
+      <div class="ef-progress-bar"><span class="ef-progress-fill" id="ef-fill"></span></div>
+      <div class="ef-progress-label"><span id="ef-step-num">1</span> of <span id="ef-step-total">2</span></div>
+    </div>
+
+    <p class="ef-loading" id="ef-loading">Loading application...</p>
+
+    <form id="ef-form" novalidate autocomplete="on" hidden>
+
+      <!-- ============ PAGE 1 : CONTACT (creates contact in GHL) ============ -->
+      <section class="ef-step is-active" data-step="1">
+        <p class="ef-intro ef-step-intro">Please answer the following questions. Your responses are kept confidential. Once your application is submitted, you will receive an email within 3 business days with next steps.</p>
+        <div id="ef-fields-started"></div>
+      </section>
+
+      <!-- ============ PAGE 2 : YOUR WHY, WELLBEING, RETREAT SELECTION & BEYOND ============ -->
+      <section class="ef-step" data-step="2">
+        <div id="ef-fields-complete"></div>
+      </section>
+
+      <!-- Error banner -->
+      <p class="ef-error" id="ef-error" role="alert" hidden>Please complete the required fields above before continuing.</p>
+
+      <!-- Nav -->
+      <div class="ef-nav">
+        <button type="button" class="ef-btn ef-btn-ghost" id="ef-back" hidden>Back</button>
+        <button type="button" class="ef-btn" id="ef-next">Continue</button>
+        <button type="submit" class="ef-btn" id="ef-submit" hidden>Submit My Application</button>
+      </div>
+    </form>
+
+    <!-- Success -->
+    <div class="ef-success" id="ef-success" hidden>
+      <h3 class="ef-step-title">Thank you, your application is received.</h3>
+      <p class="ef-intro">You will receive an email within 3 business days with next steps. We are honored you are here.</p>
+    </div>
+
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  /* ====================== CONFIG ====================== */
+  var CONFIG = {
+    WORKER_BASE: "https://kerry-forms.miriam-68c.workers.dev",
+    FORM_KEY: "application"
+  };
+  /* ==================================================== */
+
+  var root      = document.getElementById("ef-app");
+  var loadingEl = document.getElementById("ef-loading");
+  var form      = document.getElementById("ef-form");
+  var backBtn   = document.getElementById("ef-back");
+  var nextBtn   = document.getElementById("ef-next");
+  var subBtn    = document.getElementById("ef-submit");
+  var errEl     = document.getElementById("ef-error");
+  var fill      = document.getElementById("ef-fill");
+  var stepNum   = document.getElementById("ef-step-num");
+  var stepTotal = document.getElementById("ef-step-total");
+
+  var steps, total, current = 0;
+  var stagesById = {}; // stageId -> stage config, for submit-time field lookups
+
+  /* ---------- HTML helpers ---------- */
+  function esc(s){
+    return String(s == null ? "" : s)
+      .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  }
+  // Options are authored "Label — price"; split so the price renders muted,
+  // matching the original hand-built markup.
+  function priceSplit(label){
+    var i = label.indexOf(" — ");
+    if(i === -1) return esc(label);
+    return esc(label.slice(0,i)) + ' <em class="ef-price">' + esc(label.slice(i+3)) + '</em>';
+  }
+
+  var COUNTRIES = ["United States","Canada","United Kingdom","Australia","Afghanistan","Åland Islands","Albania","Algeria","American Samoa","Andorra","Angola","Anguilla","Antigua & Barbuda","Argentina","Armenia","Aruba","Austria","Azerbaijan","Bahamas","Bahrain","Bangladesh","Barbados","Belarus","Belgium","Belize","Benin","Bermuda","Bhutan","Bolivia","Bosnia & Herzegovina","Botswana","Brazil","Brunei","Bulgaria","Burkina Faso","Burundi","Cambodia","Cameroon","Cape Verde","Cayman Islands","Central African Republic","Chad","Chile","China","Colombia","Comoros","Congo - Brazzaville","Congo - Kinshasa","Cook Islands","Costa Rica","Côte d'Ivoire","Croatia","Cuba","Curaçao","Cyprus","Czechia","Denmark","Djibouti","Dominica","Dominican Republic","Ecuador","Egypt","El Salvador","Equatorial Guinea","Eritrea","Estonia","Eswatini","Ethiopia","Faroe Islands","Fiji","Finland","France","French Guiana","French Polynesia","Gabon","Gambia","Georgia","Germany","Ghana","Gibraltar","Greece","Greenland","Grenada","Guadeloupe","Guam","Guatemala","Guernsey","Guinea","Guinea-Bissau","Guyana","Haiti","Honduras","Hong Kong SAR China","Hungary","Iceland","India","Indonesia","Iran","Iraq","Ireland","Isle of Man","Israel","Italy","Jamaica","Japan","Jersey","Jordan","Kazakhstan","Kenya","Kiribati","Kosovo","Kuwait","Kyrgyzstan","Laos","Latvia","Lebanon","Lesotho","Liberia","Libya","Liechtenstein","Lithuania","Luxembourg","Macao SAR China","Madagascar","Malawi","Malaysia","Maldives","Mali","Malta","Marshall Islands","Martinique","Mauritania","Mauritius","Mayotte","Mexico","Micronesia","Moldova","Monaco","Mongolia","Montenegro","Montserrat","Morocco","Mozambique","Myanmar (Burma)","Namibia","Nauru","Nepal","Netherlands","New Caledonia","New Zealand","Nicaragua","Niger","Nigeria","Niue","North Korea","North Macedonia","Norway","Oman","Pakistan","Palau","Palestinian Territories","Panama","Papua New Guinea","Paraguay","Peru","Philippines","Poland","Portugal","Puerto Rico","Qatar","Réunion","Romania","Russia","Rwanda","Samoa","San Marino","São Tomé & Príncipe","Saudi Arabia","Senegal","Serbia","Seychelles","Sierra Leone","Singapore","Sint Maarten","Slovakia","Slovenia","Solomon Islands","Somalia","South Africa","South Korea","South Sudan","Spain","Sri Lanka","St. Kitts & Nevis","St. Lucia","St. Vincent & Grenadines","Sudan","Suriname","Sweden","Switzerland","Syria","Taiwan","Tajikistan","Tanzania","Thailand","Timor-Leste","Togo","Tonga","Trinidad & Tobago","Tunisia","Türkiye","Turkmenistan","Turks & Caicos Islands","Tuvalu","Uganda","Ukraine","United Arab Emirates","Uruguay","Uzbekistan","Vanuatu","Vatican City","Venezuela","Vietnam","Western Sahara","Yemen","Zambia","Zimbabwe"];
+
+  function renderField(f){
+    var reqTag = f.required ? ' <em>(required)</em>' : '';
+    var htmlType = (f.standardKey === "email") ? "email" : f.type;
+
+    if(f.type === "select"){
+      return '<label class="ef-field"><span class="ef-label">'+esc(f.label)+reqTag+'</span>'
+        + '<select name="'+f.id+'" class="ef-select"></select></label>';
+    }
+    if(f.type === "text" || f.type === "tel" || f.type === "date"){
+      return '<label class="ef-field"><span class="ef-label">'+esc(f.label)+reqTag+'</span>'
+        + (f.note ? '<span class="ef-help">'+esc(f.note)+'</span>' : '')
+        + '<input type="'+htmlType+'" name="'+f.id+'"'+(f.required?' required':'')+'></label>';
+    }
+    if(f.type === "textarea"){
+      return '<label class="ef-field"><span class="ef-label">'+esc(f.label)+reqTag+'</span>'
+        + (f.note ? '<span class="ef-help">'+esc(f.note)+'</span>' : '')
+        + '<textarea name="'+f.id+'" rows="4"'+(f.required?' required':'')+'></textarea></label>';
+    }
+    if(f.type === "radio"){
+      var opts = (f.options||[]).map(function(o,idx){
+        return '<label class="ef-radio"><input type="radio" name="'+f.id+'" value="'+esc(o.value)+'"'+(f.required&&idx===0?' required':'')+'><span>'+priceSplit(o.label)+'</span></label>';
+      }).join("");
+      return '<div class="ef-field"><span class="ef-label">'+esc(f.label)+reqTag+'</span>'
+        + (f.note ? '<p class="ef-note">'+esc(f.note)+'</p>' : '') + opts + '</div>';
+    }
+    if(f.type === "checkbox-group"){
+      var copts = (f.options||[]).map(function(o){
+        var soldOut = !!o.soldOut;
+        return '<label class="ef-check'+(soldOut?' ef-check-disabled':'')+'"><input type="checkbox" name="'+f.id+'" value="'+esc(o.value)+'"'+(soldOut?' disabled':'')+'><span>'+priceSplit(o.label)+(soldOut?' <em class="ef-soldout">SOLD OUT</em>':'')+'</span></label>';
+      }).join("");
+      return '<div class="ef-field"><span class="ef-label">'+esc(f.label)+reqTag+'</span>'
+        + (f.note ? '<p class="ef-note">'+esc(f.note)+'</p>' : '') + copts + '</div>';
+    }
+    if(f.type === "checkbox"){
+      return '<label class="ef-check"><input type="checkbox" name="'+f.id+'" value="Yes"><span>'+esc(f.label)+'</span></label>';
+    }
+    return "";
+  }
+
+  function populateCountrySelect(container){
+    var sel = container.querySelector("select[name=country]");
+    if(!sel) return;
+    var ph = document.createElement("option"); ph.value=""; ph.textContent="Select a country"; sel.appendChild(ph);
+    COUNTRIES.forEach(function(c){ var o=document.createElement("option"); o.value=c; o.textContent=c; sel.appendChild(o); });
+    sel.value = "United States";
+  }
+
+  /* ---------- Fetch config, build the page ---------- */
+  fetch(CONFIG.WORKER_BASE + "/config?form=" + CONFIG.FORM_KEY)
+    .then(function(r){ if(!r.ok) throw new Error("config fetch failed"); return r.json(); })
+    .then(function(cfg){ buildForm(cfg); })
+    .catch(function(){
+      loadingEl.textContent = "This form couldn't load. Please refresh the page, or contact us if it keeps happening.";
+    });
+
+  function buildForm(cfg){
+    var startedStage  = cfg.stages.filter(function(s){ return s.id === "started"; })[0];
+    var completeStage = cfg.stages.filter(function(s){ return s.id !== "started"; })[0];
+    stagesById[startedStage.id] = startedStage;
+    stagesById[completeStage.id] = completeStage;
+
+    document.getElementById("ef-fields-started").innerHTML = startedStage.fields.map(renderField).join("");
+    document.getElementById("ef-fields-complete").innerHTML = completeStage.fields.map(renderField).join("");
+    populateCountrySelect(form);
+
+    loadingEl.hidden = true;
+    form.hidden = false;
+
+    steps = Array.prototype.slice.call(form.querySelectorAll(".ef-step"));
+    total = steps.length;
+    stepTotal.textContent = total;
+
+    init(startedStage.id, completeStage.id);
+  }
+
+  function init(startedId, completeId){
+
+    function showStep(i){
+      steps.forEach(function(s,idx){ s.classList.toggle("is-active", idx===i); });
+      current = i;
+      stepNum.textContent = i+1;
+      fill.style.width = (((i+1)/total)*100) + "%";
+      backBtn.hidden = (i===0);
+      var last = (i===total-1);
+      nextBtn.hidden = last;
+      subBtn.hidden  = !last;
+      errEl.hidden = true;
+      saveState();
+      root.scrollIntoView({behavior:"smooth", block:"start"});
+    }
+
+    function validateStep(i){
+      var ok = true;
+      var fields = steps[i].querySelectorAll("input,textarea,select");
+      steps[i].querySelectorAll(".ef-invalid").forEach(function(e){e.classList.remove("ef-invalid");});
+      steps[i].querySelectorAll(".ef-invalid-group").forEach(function(e){e.classList.remove("ef-invalid-group");});
+      var radioGroups = {}, checkboxGroupNames = {};
+      fields.forEach(function(f){
+        if(f.type==="radio"){ if(f.required) radioGroups[f.name]=true; return; }
+        if(f.type==="checkbox"){
+          // Multiple inputs can share a name (checkbox-group) or be a lone
+          // boolean checkbox. Only lone required booleans are enforced here;
+          // groups are enforced below via checkboxGroupNames.
+          var group = steps[i].querySelectorAll("input[name='"+f.name+"']");
+          if(group.length > 1){ if(f.required) checkboxGroupNames[f.name] = true; return; }
+          if(f.required && !f.checked){ ok=false; markGroup(f); }
+          return;
+        }
+        if(f.required && !String(f.value).trim()){ ok=false; f.classList.add("ef-invalid"); }
+        else if(f.type==="email" && f.value && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(f.value)){ ok=false; f.classList.add("ef-invalid"); }
+      });
+      Object.keys(radioGroups).forEach(function(name){
+        var checked = steps[i].querySelector("input[name='"+name+"']:checked");
+        if(!checked){ ok=false; markGroup(steps[i].querySelector("input[name='"+name+"']")); }
+      });
+      Object.keys(checkboxGroupNames).forEach(function(name){
+        var checked = steps[i].querySelector("input[name='"+name+"']:checked");
+        if(!checked){ ok=false; markGroup(steps[i].querySelector("input[name='"+name+"']")); }
+      });
+      return ok;
+    }
+    function markGroup(input){
+      var grp = input.closest(".ef-field");
+      if(grp) grp.classList.add("ef-invalid-group");
+      else input.classList.add("ef-invalid");
+    }
+
+    function collect(){
+      var data = {};
+      var fd = new FormData(form);
+      fd.forEach(function(v,k){
+        if(data[k]===undefined){ data[k]=v; }
+        else { data[k] = [].concat(data[k], v); }
+      });
+      Object.keys(data).forEach(function(k){
+        if(Array.isArray(data[k])) data[k] = data[k].join(", ");
+      });
+      return data;
+    }
+
+    function postSubmit(stageId, payload){
+      return fetch(CONFIG.WORKER_BASE + "/submit?form=" + CONFIG.FORM_KEY + "&stage=" + stageId, {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify(payload)
+      });
+    }
+
+    /* ============ SAVE & RESUME ============
+       Auto-saves every answer to this browser as the applicant types, so if
+       they leave and return to the page (same device) everything is
+       restored. State clears on successful submit and self-expires after
+       14 days. */
+    var STORE_KEY = "ef_app_state_v1";
+    var STORE_TTL = 14*24*60*60*1000; // 14 days
+
+    function saveState(){
+      try{
+        var data = {};
+        form.querySelectorAll("input,textarea,select").forEach(function(el){
+          if(!el.name) return;
+          if(el.type==="radio"){
+            if(el.checked) data[el.name] = el.value;
+          } else if(el.type==="checkbox"){
+            if(el.checked){ (data[el.name]=data[el.name]||[]).push(el.value); }
+          } else if(el.value){
+            data[el.name] = el.value;
+          }
+        });
+        localStorage.setItem(STORE_KEY, JSON.stringify({step:current, ts:Date.now(), data:data}));
+      }catch(e){/* private mode / storage full - fail silently */}
+    }
+    function clearState(){ try{ localStorage.removeItem(STORE_KEY); }catch(e){} }
+
+    function applyData(data){
+      Object.keys(data).forEach(function(name){
+        var val = data[name];
+        var els = form.querySelectorAll("[name='"+name+"']");
+        if(!els.length) return;
+        els.forEach(function(el){
+          if(el.type==="radio"){ el.checked = (el.value===val); }
+          else if(el.type==="checkbox"){
+            var arr = Array.isArray(val)?val:[val];
+            if(arr.indexOf(el.value)!==-1 && !el.disabled) el.checked = true;
+          }
+          else { el.value = val; }
+        });
+      });
+    }
+
+    function restoreState(){
+      var saved;
+      try{ saved = JSON.parse(localStorage.getItem(STORE_KEY)||"null"); }catch(e){ saved=null; }
+      if(!saved || !saved.data) return null;
+      if(saved.ts && (Date.now()-saved.ts) > STORE_TTL){ clearState(); return null; }
+      applyData(saved.data);
+      return saved;
+    }
+
+    // Prefill from ?query= merge fields (contact/text fields only), without
+    // clobbering anything already restored or typed.
+    function prefillFromURL(){
+      var qs; try{ qs = new URLSearchParams(window.location.search); }catch(e){ return; }
+      qs.forEach(function(v,k){
+        if(v==="") return;
+        form.querySelectorAll("[name='"+k+"']").forEach(function(el){
+          if(el.type==="radio"||el.type==="checkbox") return;
+          if(!el.value) el.value = v;
+        });
+      });
+    }
+
+    form.addEventListener("input", saveState);
+    form.addEventListener("change", saveState);
+
+    var stage1Sent = false;
+    function sendStage1(){
+      if(stage1Sent) return;
+      stage1Sent = true;
+      postSubmit(startedId, collect()).catch(function(){ /* never block the applicant */ });
+    }
+
+    nextBtn.addEventListener("click", function(){
+      if(!validateStep(current)){ errEl.hidden=false; return; }
+      if(current===0){ sendStage1(); }
+      if(current < total-1){ showStep(current+1); }
+    });
+    backBtn.addEventListener("click", function(){ if(current>0) showStep(current-1); });
+
+    form.addEventListener("submit", function(e){
+      e.preventDefault();
+      if(!validateStep(current)){ errEl.hidden=false; return; }
+      sendStage1(); // safety net if they somehow reach the end without it
+      var d = collect();
+      subBtn.disabled = true; subBtn.textContent = "Submitting...";
+      postSubmit(completeId, d)
+        .then(function(r){ if(!r.ok) throw new Error("submit failed"); return r.json(); })
+        .then(function(){
+          clearState();
+          form.hidden = true;
+          document.querySelector("#ef-app .ef-progress").hidden = true;
+          document.getElementById("ef-success").hidden = false;
+          root.scrollIntoView({behavior:"smooth", block:"start"});
+        })
+        .catch(function(){
+          subBtn.disabled = false; subBtn.textContent = "Submit My Application";
+          errEl.textContent = "Something went wrong submitting your application. Please try again, or email us if it keeps happening.";
+          errEl.hidden = false;
+        });
+    });
+
+    var saved = restoreState();
+    prefillFromURL();
+    if(saved && saved.step>0){ stage1Sent = true; }
+    showStep(saved && saved.step ? Math.min(saved.step, total-1) : 0);
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,47 @@
+{
+  "title": "Retreat Waitlist",
+  "source": "Retreat Waitlist",
+  "stages": [
+    {
+      "id": "complete",
+      "tag": "retreat - waitlist",
+      "removeTags": [],
+      "note": "Adds them to the waitlist list Kerry pulls from when a spot opens.",
+      "fields": [
+        {
+          "id": "first_name",
+          "label": "First Name",
+          "type": "text",
+          "required": true,
+          "standard": true,
+          "standardKey": "firstName"
+        },
+        {
+          "id": "last_name",
+          "label": "Last Name",
+          "type": "text",
+          "required": true,
+          "standard": true,
+          "standardKey": "lastName"
+        },
+        {
+          "id": "email",
+          "label": "Email",
+          "type": "text",
+          "required": true,
+          "standard": true,
+          "standardKey": "email",
+          "locked": true
+        },
+        {
+          "id": "phone",
+          "label": "Phone",
+          "type": "tel",
+          "required": true,
+          "standard": true,
+          "standardKey": "phone"
+        }
+      ]
+    }
+  ]
+}

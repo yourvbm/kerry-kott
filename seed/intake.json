@@ -1,0 +1,292 @@
+{
+  "title": "Earth & Flesh Intake",
+  "source": "Earth & Flesh Intake",
+  "stages": [
+    {
+      "id": "complete",
+      "tag": "Retreat Intake - Complete",
+      "removeTags": [],
+      "note": "Records logistics for someone already registered; internal only.",
+      "fields": [
+        {
+          "id": "first_name",
+          "label": "First Name",
+          "type": "text",
+          "required": true,
+          "standard": true,
+          "standardKey": "firstName"
+        },
+        {
+          "id": "last_name",
+          "label": "Last Name",
+          "type": "text",
+          "required": true,
+          "standard": true,
+          "standardKey": "lastName"
+        },
+        {
+          "id": "email",
+          "label": "Email",
+          "type": "text",
+          "required": true,
+          "standard": true,
+          "standardKey": "email",
+          "locked": true,
+          "note": "Please use the same email you registered with."
+        },
+        {
+          "id": "preferred_name",
+          "label": "Preferred Name",
+          "type": "text",
+          "required": true,
+          "standard": false,
+          "ghlKey": "contact.preferred_name",
+          "ghlName": "Preferred Name",
+          "dataType": "TEXT",
+          "ghlFieldId": "CMzdqrBIvvfLbg8nDwPr"
+        },
+        {
+          "id": "date_of_birth",
+          "label": "Date of Birth",
+          "type": "date",
+          "required": true,
+          "standard": true,
+          "standardKey": "dateOfBirth"
+        },
+        {
+          "id": "mailing_address",
+          "label": "Mailing Address",
+          "type": "textarea",
+          "required": true,
+          "standard": false,
+          "ghlKey": "contact.mailing_address",
+          "ghlName": "Mailing Address",
+          "dataType": "LARGE_TEXT",
+          "ghlFieldId": "OZZ6gW6Jw0RYpPJS0S5K"
+        },
+        {
+          "id": "emergency_contact",
+          "label": "Emergency Contact (name, relationship, phone)",
+          "type": "textarea",
+          "required": true,
+          "standard": false,
+          "ghlKey": "contact.emergency_contact_name_relationship_phone",
+          "ghlName": "Emergency Contact (name, relationship, phone)",
+          "dataType": "LARGE_TEXT",
+          "ghlFieldId": "C4JfQ6C6pwWm5eghayGO"
+        },
+        {
+          "id": "arrival_method",
+          "label": "How will you be arriving?",
+          "type": "radio",
+          "required": true,
+          "standard": false,
+          "ghlKey": "contact.how_will_you_be_arriving",
+          "ghlName": "How will you be arriving",
+          "dataType": "LARGE_TEXT",
+          "options": [
+            {
+              "label": "Driving",
+              "value": "Driving"
+            },
+            {
+              "label": "Flying",
+              "value": "Flying"
+            },
+            {
+              "label": "Unsure",
+              "value": "Unsure"
+            }
+          ],
+          "ghlFieldId": "zawgQqrvdA6S3mBJfwmp"
+        },
+        {
+          "id": "vehicle_details",
+          "label": "If driving, please include your vehicle make, model, and color",
+          "type": "text",
+          "required": false,
+          "standard": false,
+          "ghlKey": "contact.vehicle_make_model_color_if_driving",
+          "ghlName": "Vehicle make model color if driving",
+          "dataType": "TEXT",
+          "showIf": {
+            "field": "arrival_method",
+            "equals": "Driving"
+          },
+          "ghlFieldId": "AJ0HF8TcyQEOQOmXt3Bk"
+        },
+        {
+          "id": "flight_details",
+          "label": "If flying, please include your flight details",
+          "type": "textarea",
+          "required": false,
+          "standard": false,
+          "ghlKey": "contact.flight_details_if_flying",
+          "ghlName": "Flight details if flying",
+          "dataType": "LARGE_TEXT",
+          "showIf": {
+            "field": "arrival_method",
+            "equals": "Flying"
+          },
+          "ghlFieldId": "Mns3CbLx4y2rbZyaXl7o"
+        },
+        {
+          "id": "airport_transport",
+          "label": "Do you require airport transportation?",
+          "type": "radio",
+          "required": true,
+          "standard": false,
+          "ghlKey": "contact.do_you_require_airport_transportation",
+          "ghlName": "Do you require airport transportation",
+          "dataType": "LARGE_TEXT",
+          "note": "Transportation must be arranged in advance. Round-trip transportation is available and pricing is determined based on need and is approximately $50-$100 per person.",
+          "options": [
+            {
+              "label": "Yes",
+              "value": "Yes"
+            },
+            {
+              "label": "No",
+              "value": "No"
+            },
+            {
+              "label": "Unsure",
+              "value": "Unsure"
+            }
+          ],
+          "ghlFieldId": "qDFBnG9KbOI6uyGm1OQt"
+        },
+        {
+          "id": "allergies",
+          "label": "Do you have any allergies?",
+          "type": "textarea",
+          "required": true,
+          "standard": false,
+          "ghlKey": "contact.do_you_have_any_allergies",
+          "ghlName": "Do you have any allergies",
+          "dataType": "LARGE_TEXT",
+          "note": "Please list any allergies (food, environmental, medications, plants, or otherwise), along with any important information about them.",
+          "ghlFieldId": "RHRG3VnYCUW0zKRIbMEN"
+        },
+        {
+          "id": "pregnancy_status",
+          "label": "Are you pregnant or trying to conceive?",
+          "type": "textarea",
+          "required": true,
+          "standard": false,
+          "ghlKey": "contact.are_you_pregnant_or_trying_to_conceive",
+          "ghlName": "Are you pregnant or trying to conceive",
+          "dataType": "LARGE_TEXT",
+          "ghlFieldId": "tX0nrXKcjUPQZsGrugzJ"
+        },
+        {
+          "id": "cat_concerns",
+          "label": "Two cats live on the property and may be present during the retreat. Do you have any allergies, sensitivities, fears, or concerns regarding cats?",
+          "type": "textarea",
+          "required": true,
+          "standard": false,
+          "ghlKey": "contact.cat_allergies_sensitivities_fears_or_concerns",
+          "ghlName": "Cat allergies sensitivities fears or concerns",
+          "dataType": "LARGE_TEXT",
+          "ghlFieldId": "79lOlgYDr2ehud70qxvB"
+        },
+        {
+          "id": "snore",
+          "label": "Do you snore?",
+          "type": "radio",
+          "required": true,
+          "standard": false,
+          "ghlKey": "contact.do_you_snore",
+          "ghlName": "Do you snore",
+          "dataType": "LARGE_TEXT",
+          "options": [
+            {
+              "label": "Yes",
+              "value": "Yes"
+            },
+            {
+              "label": "No",
+              "value": "No"
+            },
+            {
+              "label": "Unsure",
+              "value": "Unsure"
+            }
+          ],
+          "ghlFieldId": "7UpZDW6C3AMHcKqlkIlg"
+        },
+        {
+          "id": "wear_contacts",
+          "label": "Do you wear contacts?",
+          "type": "radio",
+          "required": true,
+          "standard": false,
+          "ghlKey": "contact.do_you_wear_contacts",
+          "ghlName": "Do you wear contacts",
+          "dataType": "LARGE_TEXT",
+          "note": "If we work with Sananga (plant medicine) this question is important.",
+          "options": [
+            {
+              "label": "Yes",
+              "value": "Yes"
+            },
+            {
+              "label": "No",
+              "value": "No"
+            }
+          ],
+          "ghlFieldId": "2UabjjjoBIVohf406PFg"
+        },
+        {
+          "id": "retreat_addons",
+          "label": "Retreat Add-Ons",
+          "type": "checkbox-group",
+          "required": true,
+          "standard": false,
+          "ghlKey": "contact.retreat_addons",
+          "ghlName": "Retreat Add-Ons",
+          "dataType": "LARGE_TEXT",
+          "note": "Select all that apply.",
+          "options": [
+            {
+              "label": "Additional Night Stay \u2014 $100 per night",
+              "value": "Additional Night Stay $100 per night"
+            },
+            {
+              "label": "1:1 Session with Kerry \u2014 $225",
+              "value": "1:1 Session with Kerry $225"
+            },
+            {
+              "label": "In-Person Post Retreat Session with Kerry \u2014 $225",
+              "value": "In-Person Post Retreat Session with Kerry $225"
+            },
+            {
+              "label": "25 minute photoshoot \u2014 $325",
+              "value": "25 minute photoshoot $325"
+            },
+            {
+              "label": "50 minute photoshoot \u2014 $625",
+              "value": "50 minute photoshoot $625"
+            },
+            {
+              "label": "None at this time",
+              "value": "None at this time"
+            }
+          ],
+          "ghlFieldId": "WCpuPS2KB6ivm19AAHVv"
+        },
+        {
+          "id": "intake_notes",
+          "label": "Is there anything important to note that came up in this intake?",
+          "type": "textarea",
+          "required": true,
+          "standard": false,
+          "ghlKey": "contact.is_there_anything_important_to_note_that_came_up_in_this_intake",
+          "ghlName": "Is there anything important to note that came up in this intake",
+          "dataType": "LARGE_TEXT",
+          "ghlFieldId": "cnjZPYxAaMeLrnnJvNiV"
+        }
+      ]
+    }
+  ]
+}
