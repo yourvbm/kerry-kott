@@ -32,6 +32,8 @@ body{
 #admin-login{
   max-width:380px;margin:14vh auto 0;padding:0 20px;text-align:center;
 }
+.kk-logo{display:block;width:220px;max-width:100%;height:auto;margin:0 auto 18px;}
+.kk-logo-app{width:170px;margin:0 0 18px;}
 #admin-login h1{font-family:var(--font-display);font-weight:600;font-size:28px;margin:0 0 6px;}
 #admin-login p{color:var(--muted);font-size:14px;margin:0 0 24px;}
 #admin-login input{
@@ -250,7 +252,8 @@ body{
 
 <!-- ============ LOGIN GATE ============ -->
 <div id="admin-login">
-  <h1>Kerry Kott Forms Admin</h1>
+  <img class="kk-logo" src="https://assets.cdn.filesafe.space/ps7itsG5PeLgg7TDwnGV/media/6a47eac4989afcfcc93100ed.png" alt="Kerry Kott">
+  <h1>🌿 Forms Admin</h1>
   <p>Enter the admin password to edit form fields, tags, and copy.</p>
   <input type="password" id="login-pw" placeholder="Password" autocomplete="current-password">
   <button type="button" id="login-btn">Log In</button>
@@ -259,8 +262,9 @@ body{
 
 <!-- ============ MAIN APP (shown after login) ============ -->
 <div id="admin-app" hidden>
+  <img class="kk-logo kk-logo-app" src="https://assets.cdn.filesafe.space/ps7itsG5PeLgg7TDwnGV/media/6a47eac4989afcfcc93100ed.png" alt="Kerry Kott">
   <div class="admin-head">
-    <h1><button type="button" id="home-link">Kerry Kott Forms Admin</button></h1>
+    <h1><button type="button" id="home-link">🌿 Forms Admin</button></h1>
     <div class="sub">Edit field labels, options, tags &amp; evergreen copy — no code push needed.</div>
   </div>
 
