@@ -99,13 +99,14 @@ body{
 .tag-warning{font-size:12.5px;color:var(--accent);margin:2px 0 14px;}
 .stage-note{font-size:13.5px;font-style:italic;color:var(--muted);margin:0 0 18px;}
 
-.exit-box{
-  background:#fdf1ef;border:1.5px solid #e8c9c2;border-radius:10px;
-  padding:14px 16px;margin:2px 0 18px;
+.exit-note{
+  font-size:12.5px;color:var(--accent);margin-top:10px;padding-top:10px;
+  border-top:1px dashed #e8c9c2;line-height:1.8;
 }
-.exit-title{font-size:13px;font-weight:600;color:var(--accent);margin-bottom:10px;}
-.exit-box .stage-row{margin-bottom:10px;}
-.exit-box .stage-row:last-child{margin-bottom:0;}
+.exit-note input[type=text]{
+  font-size:12.5px;padding:4px 8px;border:1.5px solid #e8c9c2;border-radius:6px;
+  color:var(--accent);background:#fdf1ef;width:auto;min-width:120px;max-width:280px;
+}
 
 .field-list{display:flex;flex-direction:column;gap:10px;margin-bottom:14px;}
 .field-row{
@@ -393,15 +394,6 @@ body{
     if(stage.note){
       html += '<p class="stage-note">'+esc(stage.note)+'</p>';
     }
-    if(stage.exit){
-      html += '<div class="exit-box">';
-      html += '<div class="exit-title">Eligibility gate — when "'+esc(stage.exit.field)+'" = "'+esc(stage.exit.equals)+'"</div>';
-      html += '<div class="stage-row"><label>Tag applied instead (does not continue)</label>'
-        + '<input type="text" class="exit-tag-input" data-stage-idx="'+sIdx+'" value="'+esc(tagsToText(stage.exit.tag))+'"></div>';
-      html += '<div class="stage-row"><label>Message shown to them</label>'
-        + '<input type="text" class="exit-msg-input" data-stage-idx="'+sIdx+'" value="'+esc(stage.exit.message)+'"></div>';
-      html += '</div>';
-    }
     html += '<div class="field-list">';
     stage.fields.forEach(function(field, fIdx){
       html += renderField(formKey, stage, field, sIdx, fIdx);
@@ -450,6 +442,15 @@ body{
 
     if((field.type === "radio" || field.type === "checkbox-group") && field.type !== "select"){
       html += renderOptionsEditor(field);
+    }
+
+    if(stage.exit && stage.exit.field === field.id){
+      html += '<div class="exit-note">'
+        + 'If <strong>'+esc(stage.exit.equals)+'</strong> is selected: tags '
+        + '<input type="text" class="exit-tag-input" data-stage-idx="'+sIdx+'" value="'+esc(tagsToText(stage.exit.tag))+'"> '
+        + 'instead and stops, showing: '
+        + '<input type="text" class="exit-msg-input" data-stage-idx="'+sIdx+'" value="'+esc(stage.exit.message)+'">'
+        + '</div>';
     }
 
     html += '</div>'; // field-row
