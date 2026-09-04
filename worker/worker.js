@@ -51,11 +51,14 @@ const ALLOWED_ORIGINS = [
   "https://kerrykott.com",
   "https://www.kerrykott.com",
   "https://go.kerrykott.com",
-  "https://yourvbm.github.io",
+  "https://admin.kerrykott.com",
+  "https://kerry-kott.pages.dev",
 ];
 
 function allowed(origin) {
   if (ALLOWED_ORIGINS.includes(origin)) return true;
+  // Cloudflare Pages preview deploys (e.g. 9fb72902.kerry-kott.pages.dev).
+  if (/^https:\/\/[a-z0-9-]+\.kerry-kott\.pages\.dev$/i.test(origin)) return true;
   if (/^https:\/\/[a-z0-9-]+\.squarespace\.com$/i.test(origin)) return true;
   // Local preview while building.
   if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)) return true;
