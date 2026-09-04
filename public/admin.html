@@ -51,6 +51,21 @@ body{
 .admin-head{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:22px;}
 .admin-head h1{font-family:var(--font-display);font-weight:600;font-size:26px;margin:0;}
 .admin-head .sub{color:var(--muted);font-size:13px;}
+#home-link{font:inherit;background:none;border:none;padding:0;margin:0;color:var(--ink);cursor:pointer;}
+#home-link:hover{text-decoration:underline;}
+
+.home-list{display:flex;flex-direction:column;gap:12px;}
+.home-card{
+  display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;
+  background:var(--panel);border:1.5px solid var(--border);border-radius:14px;padding:18px 22px;
+}
+.home-card h3{font-family:var(--font-display);font-size:19px;font-weight:600;margin:0 0 4px;}
+.home-card-url{font-size:12px;color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;}
+.home-card-btn{
+  font-size:14px;font-weight:600;padding:9px 20px;border-radius:999px;border:none;
+  background:var(--ink);color:var(--cream);cursor:pointer;white-space:nowrap;
+}
+.home-card-btn:hover{opacity:.92;}
 
 .tabs{display:flex;gap:6px;margin-bottom:22px;border-bottom:1.5px solid var(--border);}
 .tab-btn{
@@ -182,11 +197,11 @@ body{
 <!-- ============ MAIN APP (shown after login) ============ -->
 <div id="admin-app" hidden>
   <div class="admin-head">
-    <h1>Kerry Kott Forms Admin</h1>
+    <h1><button type="button" id="home-link">Kerry Kott Forms Admin</button></h1>
     <div class="sub">Edit field labels, options, tags &amp; evergreen copy — no code push needed.</div>
   </div>
 
-  <div class="tabs" id="tabs"></div>
+  <div class="tabs" id="tabs" hidden></div>
   <div id="panel"></div>
 </div>
 
@@ -214,7 +229,7 @@ body{
   var FOLDER_FORMS = {application:true, intake:true}; // forms that CAN create new custom fields
 
   var pw = null;
-  var state = {activeForm: "application", configs: {}, saveMsg: {}, loading: {}};
+  var state = {activeForm: null, configs: {}, saveMsg: {}, loading: {}};
 
   var loginEl = document.getElementById("admin-login");
   var appEl   = document.getElementById("admin-app");
@@ -283,8 +298,43 @@ body{
   function showApp(){
     loginEl.hidden = true;
     appEl.hidden = false;
-    renderTabs();
-    loadForm(state.activeForm);
+    render();
+  }
+
+  function render(){
+    if(state.activeForm === null){
+      tabsEl.hidden = true;
+      renderHome();
+    } else {
+      tabsEl.hidden = false;
+      renderTabs();
+      loadForm(state.activeForm);
+    }
+  }
+
+  function goHome(){
+    state.activeForm = null;
+    render();
+  }
+  document.getElementById("home-link").addEventListener("click", goHome);
+
+  function renderHome(){
+    panelEl.innerHTML = '<div class="home-list">' + FORMS.map(function(f){
+      var meta = PAGE_META[f.key];
+      var url = meta ? SITE_ORIGIN + "/" + meta.path : "";
+      return '<div class="home-card">'
+        + '<div class="home-card-main"><h3>'+esc(f.label)+'</h3>'
+        + (url ? '<code class="home-card-url">'+esc(url)+'</code>' : '')
+        + '</div>'
+        + '<button type="button" class="home-card-btn" data-form="'+f.key+'">Edit →</button>'
+        + '</div>';
+    }).join("") + '</div>';
+    Array.prototype.forEach.call(panelEl.querySelectorAll(".home-card-btn"), function(btn){
+      btn.addEventListener("click", function(){
+        state.activeForm = btn.getAttribute("data-form");
+        render();
+      });
+    });
   }
 
   if(pw){ showApp(); }
