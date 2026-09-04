@@ -91,6 +91,39 @@ body{
   background:var(--ink);color:var(--cream);cursor:pointer;
 }
 .rename-inputs button:hover{opacity:.92;}
+.style-btn{
+  font-size:13.5px;font-weight:600;padding:9px 16px;border-radius:999px;cursor:pointer;
+  border:1.5px solid var(--border);background:none;color:var(--ink);margin-left:auto;
+}
+.style-btn:hover{border-color:var(--ink);}
+
+/* Style modal */
+.modal-backdrop{
+  position:fixed;inset:0;background:rgba(42,34,30,.45);z-index:100;
+  display:flex;align-items:flex-start;justify-content:center;padding:6vh 20px;overflow-y:auto;
+}
+.modal-card{
+  background:var(--panel);border-radius:16px;max-width:520px;width:100%;
+  padding:26px 28px 22px;box-shadow:0 20px 60px rgba(0,0,0,.3);
+}
+.modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
+.modal-head h2{font-family:var(--font-display);font-size:22px;margin:0;}
+.modal-x{border:none;background:none;font-size:18px;cursor:pointer;color:var(--muted);padding:4px;}
+.modal-x:hover{color:var(--ink);}
+.style-row{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:16px;}
+.style-row label{font-size:14px;font-weight:600;}
+.style-row input[type=color]{
+  width:44px;height:34px;padding:0;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;background:none;
+}
+.style-row select{
+  font-size:14px;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;background:#fff;min-width:180px;
+}
+.style-hint{font-size:12.5px;color:var(--muted);margin:-8px 0 18px;line-height:1.5;}
+.style-reset-btn{
+  font-size:14px;font-weight:600;padding:11px 20px;border-radius:999px;cursor:pointer;
+  border:1.5px solid var(--border);background:none;color:var(--ink);
+}
+.style-reset-btn:hover{border-color:var(--ink);}
 
 .add-form-btn{
   font-size:14px;font-weight:600;padding:10px 18px;border-radius:999px;
@@ -167,6 +200,8 @@ body{
   width:100%;font-size:14px;padding:7px 10px;border:1.5px solid var(--border);border-radius:7px;
   background:#fff;font-family:var(--font-body);
 }
+.field-row input[type=text]{overflow:hidden;text-overflow:ellipsis;}
+.field-row input[type=text]:focus{text-overflow:clip;}
 .field-row input:disabled, .field-row select:disabled{background:#EEE9E2;color:var(--muted);cursor:not-allowed;}
 .req-toggle{display:flex;align-items:center;gap:6px;font-size:13px;white-space:nowrap;padding-top:20px;}
 .field-btns{display:flex;gap:4px;padding-top:19px;}
@@ -236,6 +271,22 @@ body{
   Need something else changed? <a href="https://ticket.yourvbm.com" target="_blank" rel="noopener">Submit a request →</a>
 </div>
 
+<!-- ============ STYLE MODAL (opened via the 🎨 Style button) ============ -->
+<div id="style-modal" class="modal-backdrop" hidden>
+  <div class="modal-card">
+    <div class="modal-head">
+      <h2>Style</h2>
+      <button type="button" id="style-close" class="modal-x" aria-label="Close">✕</button>
+    </div>
+    <div id="style-body"></div>
+    <div class="save-row">
+      <button type="button" class="save-btn" id="style-save">Save Style</button>
+      <button type="button" class="style-reset-btn" id="style-reset">Reset to default</button>
+      <span class="save-msg" id="style-msg"></span>
+    </div>
+  </div>
+</div>
+
 <script>
 (function(){
   "use strict";
@@ -252,6 +303,128 @@ body{
   }
   var TYPE_OPTIONS = ["text","email","tel","date","select","textarea","radio","checkbox-group","checkbox"];
   var FOLDER_FORMS = {application:true, intake:true}; // forms that CAN create new custom fields
+
+  /* ---------------- STYLE (colors + fonts) ---------------- */
+  // Forms that render on a solid page background (Application/Intake and
+  // every generic-template form). Waitlist sits transparently over Kerry's
+  // own photo, so "Background" and "Border" don't apply there — changing
+  // them would do nothing visible, so that control is hidden for it.
+  function hasPageBackground(key){ return key !== "waitlist"; }
+
+  var FONT_PRESETS = {
+    classic: {
+      label: "Classic (Kerry's brand fonts)",
+      fontDisplay: '"sunflora-hksqi6","Playfair Display",Georgia,"Times New Roman",serif',
+      fontAccent:  '"botanica-wh6jh9","Playfair Display",Georgia,serif',
+      fontBody:    '"Sorts Mill Goudy",Georgia,"Times New Roman",serif'
+    },
+    elegant: {
+      label: "Elegant Serif (Playfair + EB Garamond)",
+      fontDisplay: '"Playfair Display",Georgia,serif',
+      fontAccent:  '"Playfair Display",Georgia,serif',
+      fontBody:    '"EB Garamond",Georgia,serif'
+    },
+    soft: {
+      label: "Soft Serif (Cormorant + EB Garamond)",
+      fontDisplay: '"Cormorant Garamond",Georgia,serif',
+      fontAccent:  '"Cormorant Garamond",Georgia,serif',
+      fontBody:    '"EB Garamond",Georgia,serif'
+    }
+  };
+
+  function defaultTheme(key){
+    var base = {
+      ink: "#2A221E",
+      inputBackground: key === "waitlist" ? "#FFFFFF" : "transparent",
+      fontDisplay: FONT_PRESETS.classic.fontDisplay,
+      fontAccent: FONT_PRESETS.classic.fontAccent,
+      fontBody: FONT_PRESETS.classic.fontBody
+    };
+    if(hasPageBackground(key)){ base.background = "#F5F0EB"; base.border = "#C7BCAD"; }
+    return base;
+  }
+
+  function presetKeyForTheme(theme){
+    var keys = Object.keys(FONT_PRESETS);
+    for(var i=0;i<keys.length;i++){
+      if(FONT_PRESETS[keys[i]].fontBody === theme.fontBody) return keys[i];
+    }
+    return "classic";
+  }
+
+  function openStyleModal(key, cfg){
+    cfg.theme = cfg.theme || defaultTheme(key);
+    var theme = cfg.theme;
+    var showBg = hasPageBackground(key);
+
+    var html = "";
+    if(showBg){
+      html += '<div class="style-row"><label>Background</label><input type="color" id="style-background" value="'+esc(theme.background)+'"></div>';
+    }
+    html += '<div class="style-row"><label>Text color</label><input type="color" id="style-ink" value="'+esc(theme.ink)+'"></div>';
+    if(showBg){
+      html += '<div class="style-row"><label>Border color</label><input type="color" id="style-border" value="'+esc(theme.border)+'"></div>';
+    }
+    html += '<div class="style-row"><label>Input field background</label><input type="color" id="style-inputbg" value="'+esc(theme.inputBackground==="transparent"?"#f5f0eb":theme.inputBackground)+'"></div>';
+    if(theme.inputBackground === "transparent"){
+      html += '<p class="style-hint">Input background is currently transparent (shows the page color behind it). Picking a color here will make inputs solid — save to apply, or leave alone to keep transparent.</p>';
+    }
+    html += '<div class="style-row"><label>Font pairing</label><select id="style-font">'
+      + Object.keys(FONT_PRESETS).map(function(k){
+          return '<option value="'+k+'"'+(k===presetKeyForTheme(theme)?' selected':'')+'>'+esc(FONT_PRESETS[k].label)+'</option>';
+        }).join("")
+      + '</select></div>';
+
+    document.getElementById("style-body").innerHTML = html;
+    document.getElementById("style-msg").textContent = "";
+    document.getElementById("style-modal").hidden = false;
+
+    var inputBgTouched = false;
+    var inputBgEl = document.getElementById("style-inputbg");
+    if(inputBgEl) inputBgEl.addEventListener("input", function(){ inputBgTouched = true; });
+
+    document.getElementById("style-save").onclick = function(){
+      var newTheme = {
+        ink: document.getElementById("style-ink").value,
+        inputBackground: inputBgTouched ? inputBgEl.value : theme.inputBackground,
+        fontDisplay: FONT_PRESETS[document.getElementById("style-font").value].fontDisplay,
+        fontAccent: FONT_PRESETS[document.getElementById("style-font").value].fontAccent,
+        fontBody: FONT_PRESETS[document.getElementById("style-font").value].fontBody
+      };
+      if(showBg){
+        newTheme.background = document.getElementById("style-background").value;
+        newTheme.border = document.getElementById("style-border").value;
+      }
+      cfg.theme = newTheme;
+      var msgEl = document.getElementById("style-msg");
+      var btn = document.getElementById("style-save");
+      btn.disabled = true; msgEl.textContent = "Saving...";
+      fetch(WORKER_BASE + "/admin/config", {
+        method: "POST", headers: authHeaders(),
+        body: JSON.stringify({form: key, config: cfg})
+      })
+      .then(function(r){ if(!r.ok) throw new Error("save failed"); return r.json(); })
+      .then(function(saved){
+        state.configs[key] = saved;
+        btn.disabled = false;
+        msgEl.textContent = "Saved!";
+        setTimeout(function(){ document.getElementById("style-modal").hidden = true; }, 600);
+      })
+      .catch(function(){ btn.disabled = false; msgEl.textContent = "Couldn't save."; });
+    };
+
+    document.getElementById("style-reset").onclick = function(){
+      cfg.theme = defaultTheme(key);
+      openStyleModal(key, cfg);
+    };
+  }
+
+  document.getElementById("style-close").addEventListener("click", function(){
+    document.getElementById("style-modal").hidden = true;
+  });
+  document.getElementById("style-modal").addEventListener("click", function(e){
+    if(e.target.id === "style-modal") e.target.hidden = true;
+  });
 
   var pw = null;
   var state = {activeForm: null, configs: {}, saveMsg: {}, loading: {}};
@@ -476,7 +649,9 @@ body{
         + '<label class="mini">Form name (shown here and on the home screen)</label>'
         + '<div class="rename-inputs"><input type="text" id="rename-input" value="'+esc(entry.label)+'">'
         + '<button type="button" id="rename-save">Save name</button>'
-        + '<span class="copy-msg" id="rename-msg"></span></div>'
+        + '<span class="copy-msg" id="rename-msg"></span>'
+        + '<button type="button" class="style-btn" id="style-open">🎨 Style</button>'
+        + '</div>'
         + '</div>';
 
       var url = embedUrl(entry);
@@ -504,6 +679,11 @@ body{
     panelEl.innerHTML = html;
 
     wirePanelEvents(key, cfg);
+
+    var styleOpenBtn = document.getElementById("style-open");
+    if(styleOpenBtn){
+      styleOpenBtn.addEventListener("click", function(){ openStyleModal(key, cfg); });
+    }
 
     var renameSaveBtn = document.getElementById("rename-save");
     if(renameSaveBtn){
@@ -568,7 +748,7 @@ body{
     html += '<div class="field-row-top">';
 
     html += '<div class="grow"><label class="mini">Label</label>'
-      + '<input type="text" class="f-label" value="'+esc(field.label)+'"></div>';
+      + '<input type="text" class="f-label" value="'+esc(field.label)+'" title="'+esc(field.label)+'"></div>';
 
     html += '<div><label class="mini">Type</label>'
       + '<select class="f-type"'+(isStandard?' disabled':'')+'>'
@@ -687,6 +867,7 @@ body{
 
         rowEl.querySelector(".f-label").addEventListener("input", function(e){
           field.label = e.target.value;
+          e.target.title = e.target.value;
           // Live-update the "will create" preview text without a full re-render.
           if(!field.ghlName){
             var mapEl = rowEl.querySelector(".ghl-map");

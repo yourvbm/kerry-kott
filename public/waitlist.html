@@ -247,12 +247,23 @@
     .then(function(cfg){
       stageId = cfg.stages[0].id;
       exitCfg = cfg.stages[0].exit || null;
+      applyTheme(cfg.theme);
       loadingEl.hidden = true;
       form.hidden = false;
     })
     .catch(function(){
       loadingEl.textContent = "This form couldn't load. Please refresh the page, or contact us if it keeps happening.";
     });
+
+  function applyTheme(theme){
+    if(!theme) return;
+    var s = root.style;
+    if(theme.ink) s.setProperty("--ink", theme.ink);
+    if(theme.inputBackground) s.setProperty("--input-bg", theme.inputBackground);
+    if(theme.fontDisplay) s.setProperty("--font-display", theme.fontDisplay);
+    if(theme.fontAccent) s.setProperty("--font-accent", theme.fontAccent);
+    if(theme.fontBody) s.setProperty("--font-body", theme.fontBody);
+  }
 
   function fail(msg){
     errEl.textContent = msg;

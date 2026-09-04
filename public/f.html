@@ -276,7 +276,20 @@
       loadingEl.textContent = "This form couldn't load. Please refresh the page, or contact us if it keeps happening.";
     });
 
+  function applyTheme(theme){
+    if(!theme) return;
+    var s = root.style;
+    if(theme.background) s.setProperty("--cream", theme.background);
+    if(theme.ink) s.setProperty("--ink", theme.ink);
+    if(theme.border) s.setProperty("--border", theme.border);
+    if(theme.inputBackground) s.setProperty("--input-bg", theme.inputBackground);
+    if(theme.fontDisplay) s.setProperty("--font-display", theme.fontDisplay);
+    if(theme.fontAccent) s.setProperty("--font-accent", theme.fontAccent);
+    if(theme.fontBody) s.setProperty("--font-body", theme.fontBody);
+  }
+
   function buildForm(cfg){
+    applyTheme(cfg.theme);
     document.title = cfg.title || "Kerry Kott";
     titleEl.textContent = cfg.title || "";
     var stage = cfg.stages[0];
