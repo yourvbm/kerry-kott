@@ -12,27 +12,6 @@
       "note": "Arms the abandoned-cart email sequence for anyone who doesn't finish the application.",
       "fields": [
         {
-          "id": "is_woman",
-          "label": "Are you a woman?",
-          "type": "radio",
-          "required": true,
-          "standard": false,
-          "ghlKey": "contact.are_you_a_woman",
-          "ghlName": "Are you a woman?",
-          "dataType": "TEXT",
-          "ghlFieldId": "DbRYYoSo0PiG8cx8r9vT",
-          "options": [
-            {
-              "label": "Yes",
-              "value": "Yes"
-            },
-            {
-              "label": "No",
-              "value": "No"
-            }
-          ]
-        },
-        {
           "id": "first_name",
           "label": "First Name",
           "type": "text",
@@ -94,6 +73,27 @@
           "ghlName": "Link to Instagram, Facebook, or website",
           "dataType": "LARGE_TEXT",
           "ghlFieldId": "d5zBPwMV1MMSBcaFvgHp"
+        },
+        {
+          "id": "is_woman",
+          "label": "Are you a woman?",
+          "type": "radio",
+          "required": true,
+          "standard": false,
+          "ghlKey": "contact.are_you_a_woman",
+          "ghlName": "Are you a woman?",
+          "dataType": "TEXT",
+          "ghlFieldId": "DbRYYoSo0PiG8cx8r9vT",
+          "options": [
+            {
+              "label": "Yes",
+              "value": "Yes"
+            },
+            {
+              "label": "No",
+              "value": "No"
+            }
+          ]
         }
       ],
       "exit": {

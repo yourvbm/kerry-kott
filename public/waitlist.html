@@ -162,12 +162,6 @@
 
     <form id="ef-form" novalidate autocomplete="on" hidden>
 
-      <div class="ef-field">
-        <span class="ef-label">Are you a woman? <em>(required)</em></span>
-        <label class="ef-radio"><input type="radio" name="is_woman" value="Yes" required><span>Yes</span></label>
-        <label class="ef-radio"><input type="radio" name="is_woman" value="No"><span>No</span></label>
-      </div>
-
       <div class="ef-grid-2">
         <label class="ef-field">
           <span class="ef-label">First Name <em>(required)</em></span>
@@ -188,6 +182,12 @@
         <span class="ef-label">Phone <em>(required)</em></span>
         <input type="tel" name="phone" autocomplete="tel" required>
       </label>
+
+      <div class="ef-field">
+        <span class="ef-label">Are you a woman? <em>(required)</em></span>
+        <label class="ef-radio"><input type="radio" name="is_woman" value="Yes" required><span>Yes</span></label>
+        <label class="ef-radio"><input type="radio" name="is_woman" value="No"><span>No</span></label>
+      </div>
 
       <!-- Honeypot: hidden from people, catches bots. Do not remove. Not
            part of the editable config — never surfaced in the admin. -->
@@ -268,7 +268,7 @@
     });
     if(!form.querySelector("input[name=is_woman]:checked")){
       ok = false;
-      form.querySelector(".ef-field").classList.add("ef-invalid-group");
+      form.querySelector("input[name=is_woman]").closest(".ef-field").classList.add("ef-invalid-group");
     }
     var fields = form.querySelectorAll("input[required]:not([type=radio])");
     Array.prototype.forEach.call(fields, function(f){

@@ -12,27 +12,6 @@
       "note": "Adds them to the waitlist list Kerry pulls from when a spot opens.",
       "fields": [
         {
-          "id": "is_woman",
-          "label": "Are you a woman?",
-          "type": "radio",
-          "required": true,
-          "standard": false,
-          "ghlKey": "contact.are_you_a_woman",
-          "ghlName": "Are you a woman?",
-          "dataType": "TEXT",
-          "ghlFieldId": "DbRYYoSo0PiG8cx8r9vT",
-          "options": [
-            {
-              "label": "Yes",
-              "value": "Yes"
-            },
-            {
-              "label": "No",
-              "value": "No"
-            }
-          ]
-        },
-        {
           "id": "first_name",
           "label": "First Name",
           "type": "text",
@@ -64,6 +43,27 @@
           "required": true,
           "standard": true,
           "standardKey": "phone"
+        },
+        {
+          "id": "is_woman",
+          "label": "Are you a woman?",
+          "type": "radio",
+          "required": true,
+          "standard": false,
+          "ghlKey": "contact.are_you_a_woman",
+          "ghlName": "Are you a woman?",
+          "dataType": "TEXT",
+          "ghlFieldId": "DbRYYoSo0PiG8cx8r9vT",
+          "options": [
+            {
+              "label": "Yes",
+              "value": "Yes"
+            },
+            {
+              "label": "No",
+              "value": "No"
+            }
+          ]
         }
       ],
       "exit": {
