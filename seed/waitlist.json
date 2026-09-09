@@ -6,7 +6,7 @@
       "id": "complete",
       "tag": [
         "retreat - waitlist",
-        "Female"
+        "female"
       ],
       "removeTags": [],
       "note": "Adds them to the waitlist list Kerry pulls from when a spot opens.",
@@ -69,7 +69,7 @@
       "exit": {
         "field": "is_woman",
         "equals": "No",
-        "tag": "Not Female",
+        "tag": "not a female",
         "message": "This experience is for women only. Thank you for your interest in Earth & Flesh."
       }
     }
