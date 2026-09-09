@@ -1,0 +1,5 @@
+# Serve the admin panel at the bare domain root without keeping a second,
+# easily-forgotten copy of admin.html in sync (that's what index.html used
+# to be, and it silently went stale — see git history). This rewrites "/"
+# to admin.html's content while keeping the URL as "/".
+/   /admin   200
