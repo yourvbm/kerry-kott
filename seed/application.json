@@ -6,7 +6,7 @@
       "id": "started",
       "tag": [
         "Retreat Application - Started",
-        "female"
+        "Female"
       ],
       "removeTags": [],
       "note": "Arms the abandoned-cart email sequence for anyone who doesn't finish the application.",
@@ -99,7 +99,7 @@
       "exit": {
         "field": "is_woman",
         "equals": "No",
-        "tag": "not a female",
+        "tag": "Not Female",
         "message": "This experience is for women only. Thank you for your interest in Earth & Flesh."
       }
     },
@@ -321,14 +321,5 @@
         }
       ]
     }
-  ],
-  "theme": {
-    "ink": "#2a221e",
-    "inputBackground": "transparent",
-    "fontDisplay": "\"sunflora-hksqi6\",\"Playfair Display\",Georgia,\"Times New Roman\",serif",
-    "fontAccent": "\"botanica-wh6jh9\",\"Playfair Display\",Georgia,serif",
-    "fontBody": "\"Sorts Mill Goudy\",Georgia,\"Times New Roman\",serif",
-    "background": "#f5f0eb",
-    "border": "#c7bcad"
-  }
+  ]
 }

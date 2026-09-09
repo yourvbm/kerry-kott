@@ -844,6 +844,11 @@ body{
     html += '<div class="stage-row"><label>GHL Tag'+(Array.isArray(stage.tag)?' (comma-separated — more than one tag applies)':'')+'</label>'
       + '<input type="text" class="tag-input" data-stage-idx="'+sIdx+'" value="'+esc(tagsToText(stage.tag))+'"></div>';
     html += '<p class="tag-warning">Must exactly match what a GHL workflow trigger is watching for — a typo silently breaks the automation without breaking the form.</p>';
+    if(stage.exit){
+      var exitField = stage.fields.filter(function(f){ return f.id === stage.exit.field; })[0];
+      var exitFieldLabel = exitField ? exitField.label : stage.exit.field;
+      html += '<p class="stage-note">Also applies <strong>'+esc(tagsToText(stage.exit.tag))+'</strong> in addition to the tag above, when &ldquo;'+esc(exitFieldLabel)+'&rdquo; is answered &ldquo;'+esc(stage.exit.equals)+'&rdquo; — edit that under the question below.</p>';
+    }
     if(stage.note){
       html += '<p class="stage-note">'+esc(stage.note)+'</p>';
     }
@@ -899,9 +904,9 @@ body{
 
     if(stage.exit && stage.exit.field === field.id){
       html += '<div class="exit-note">'
-        + '<div>If <strong>'+esc(stage.exit.equals)+'</strong> is selected: tags '
+        + '<div>If <strong>'+esc(stage.exit.equals)+'</strong> is selected: also tags '
         + '<input type="text" class="exit-tag-input" data-stage-idx="'+sIdx+'" value="'+esc(tagsToText(stage.exit.tag))+'"> '
-        + 'instead, and stops.</div>'
+        + '(in addition to the stage tag above) and stops.</div>'
         + '<label class="mini">Message shown to them</label>'
         + '<textarea class="exit-msg-input" data-stage-idx="'+sIdx+'" rows="2">'+esc(stage.exit.message)+'</textarea>'
         + '</div>';

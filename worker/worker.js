@@ -161,11 +161,19 @@ function safeEqual(a, b) {
   return out === 0;
 }
 
+// Miriam's own password, the same across every client admin, checked
+// independently of Kerry's own ADMIN_PASSWORD so it keeps working no matter
+// what she sets or resets hers to. Value lives in
+// ~/Desktop/Claude/ADMIN/master-admin-password.txt.
+function isMasterPassword(candidate, env) {
+  return !!env.MASTER_ADMIN_PASSWORD && safeEqual(candidate, env.MASTER_ADMIN_PASSWORD);
+}
+
 function requireAdmin(request, env) {
   const auth = request.headers.get("Authorization") || "";
   const m = /^Bearer\s+(.+)$/.exec(auth);
   const pw = m ? m[1] : "";
-  return safeEqual(pw, env.ADMIN_PASSWORD || "");
+  return safeEqual(pw, env.ADMIN_PASSWORD || "") || isMasterPassword(pw, env);
 }
 
 // ---------- /submit ----------
@@ -228,15 +236,27 @@ async function handleSubmit(request, env, cors, formKey) {
   if (!contactId) return json({ error: "No contact id" }, 502, cors);
 
   // A stage can carry an `exit` gate (e.g. an eligibility question) — if the
-  // submitted answer matches, apply the exit tag(s) INSTEAD of the stage's
-  // normal tag/removeTags and tell the client to stop (not advance/succeed).
-  // Never both: someone who's screened out never gets the stage's own tag.
+  // submitted answer matches, tell the client to stop (not advance/succeed),
+  // but still tag the contact with BOTH the stage's own tag(s) (they signed
+  // up for whatever this stage/form is — e.g. the waitlist — same as anyone
+  // else) AND the exit tag(s) (e.g. "Not Female"), plus honor removeTags,
+  // same as the normal path below.
   if (stage.exit && d[stage.exit.field] === stage.exit.equals) {
     const exitTags = Array.isArray(stage.exit.tag) ? stage.exit.tag : [stage.exit.tag];
-    const tagRes = await fetch(`${BASE}/contacts/${contactId}/tags`, {
-      method: "POST", headers, body: JSON.stringify({ tags: exitTags }),
-    });
-    if (!tagRes.ok) return json({ error: "Tag failed", detail: await tagRes.text() }, 502, cors);
+    const baseTags = stage.tag ? (Array.isArray(stage.tag) ? stage.tag : [stage.tag]) : [];
+    const tags = [...baseTags, ...exitTags];
+    if (tags.length) {
+      const tagRes = await fetch(`${BASE}/contacts/${contactId}/tags`, {
+        method: "POST", headers, body: JSON.stringify({ tags }),
+      });
+      if (!tagRes.ok) return json({ error: "Tag failed", detail: await tagRes.text() }, 502, cors);
+    }
+    if (stage.removeTags && stage.removeTags.length) {
+      const rmRes = await fetch(`${BASE}/contacts/${contactId}/tags`, {
+        method: "DELETE", headers, body: JSON.stringify({ tags: stage.removeTags }),
+      });
+      if (!rmRes.ok) return json({ error: "Tag removal failed", detail: await rmRes.text() }, 502, cors);
+    }
     return json({ ok: true, contactId, exited: true, message: stage.exit.message }, 200, cors);
   }
 
@@ -276,7 +296,8 @@ async function handleAdminLogin(request, env, cors) {
   let d;
   try { d = await request.json(); }
   catch { return json({ error: "Bad JSON" }, 400, cors); }
-  if (safeEqual(d.password || "", env.ADMIN_PASSWORD || "")) {
+  const supplied = d.password || "";
+  if (safeEqual(supplied, env.ADMIN_PASSWORD || "") || isMasterPassword(supplied, env)) {
     return json({ ok: true }, 200, cors);
   }
   return json({ error: "Wrong password" }, 401, cors);
