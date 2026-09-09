@@ -24,6 +24,7 @@
    this one is for everything cloned afterward. */
 #ef-generic{
   --cream:#F5F0EB;
+  --page-bg:#F5F0EB;
   --ink:#2A221E;
   --border:#C7BCAD;
   --muted:#8C8073;
@@ -31,7 +32,7 @@
   --font-accent:"botanica-wh6jh9","Playfair Display",Georgia,serif;
   --font-body:"Sorts Mill Goudy",Georgia,"Times New Roman",serif;
   --input-bg:transparent;
-  background:var(--cream);
+  background:var(--page-bg);
   color:var(--ink);
   font-family:var(--font-body);
   -webkit-font-smoothing:antialiased;
@@ -274,7 +275,12 @@
   function applyTheme(theme){
     if(!theme) return;
     var s = root.style;
-    if(theme.background) s.setProperty("--cream", theme.background);
+    if(theme.background){
+      s.setProperty("--page-bg", theme.background);
+      // --cream also colors button text and the radio-checked ring, so it
+      // must never go transparent even when the page background does.
+      s.setProperty("--cream", theme.background === "transparent" ? "#F5F0EB" : theme.background);
+    }
     if(theme.ink) s.setProperty("--ink", theme.ink);
     if(theme.border) s.setProperty("--border", theme.border);
     if(theme.inputBackground) s.setProperty("--input-bg", theme.inputBackground);

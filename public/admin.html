@@ -123,7 +123,8 @@ body{
 .style-row select{
   font-size:14px;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;background:#fff;min-width:180px;
 }
-.style-hint{font-size:12.5px;color:var(--muted);margin:-8px 0 18px;line-height:1.5;}
+.style-transparent-row{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);margin:-10px 0 18px;}
+.style-transparent-row input[type=checkbox]{width:auto;}
 .style-reset-btn{
   font-size:14px;font-weight:600;padding:11px 20px;border-radius:999px;cursor:pointer;
   border:1.5px solid var(--border);background:none;color:var(--ink);
@@ -403,6 +404,24 @@ body{
     return "classic";
   }
 
+  // Renders a color swatch plus a "Transparent" checkbox that disables it.
+  // `value` may be a hex color or the literal string "transparent".
+  function colorRowHtml(label, id, value, fallback){
+    var isTransparent = value === "transparent";
+    return '<div class="style-row"><label>'+esc(label)+'</label>'
+      + '<input type="color" id="'+id+'" value="'+esc(isTransparent?fallback:value)+'"'+(isTransparent?' disabled':'')+'></div>'
+      + '<label class="style-transparent-row"><input type="checkbox" id="'+id+'-transparent"'+(isTransparent?' checked':'')+'> Transparent</label>';
+  }
+  // Wires the checkbox to enable/disable its swatch, and returns a getter
+  // for the resolved value ("transparent" or the swatch's hex) to read at save time.
+  function wireColorRow(id){
+    var colorEl = document.getElementById(id);
+    var checkEl = document.getElementById(id+"-transparent");
+    if(!colorEl || !checkEl) return null;
+    checkEl.addEventListener("change", function(){ colorEl.disabled = checkEl.checked; });
+    return function(){ return checkEl.checked ? "transparent" : colorEl.value; };
+  }
+
   function openStyleModal(key, cfg){
     cfg.theme = cfg.theme || defaultTheme(key);
     var theme = cfg.theme;
@@ -410,16 +429,13 @@ body{
 
     var html = "";
     if(showBg){
-      html += '<div class="style-row"><label>Background</label><input type="color" id="style-background" value="'+esc(theme.background)+'"></div>';
+      html += colorRowHtml("Background", "style-background", theme.background, "#f5f0eb");
     }
     html += '<div class="style-row"><label>Text color</label><input type="color" id="style-ink" value="'+esc(theme.ink)+'"></div>';
     if(showBg){
-      html += '<div class="style-row"><label>Border color</label><input type="color" id="style-border" value="'+esc(theme.border)+'"></div>';
+      html += colorRowHtml("Border color", "style-border", theme.border, "#c7bcad");
     }
-    html += '<div class="style-row"><label>Input field background</label><input type="color" id="style-inputbg" value="'+esc(theme.inputBackground==="transparent"?"#f5f0eb":theme.inputBackground)+'"></div>';
-    if(theme.inputBackground === "transparent"){
-      html += '<p class="style-hint">Input background is currently transparent (shows the page color behind it). Picking a color here will make inputs solid — save to apply, or leave alone to keep transparent.</p>';
-    }
+    html += colorRowHtml("Input field background", "style-inputbg", theme.inputBackground, "#f5f0eb");
     html += '<div class="style-row"><label>Font pairing</label><select id="style-font">'
       + Object.keys(FONT_PRESETS).map(function(k){
           return '<option value="'+k+'"'+(k===presetKeyForTheme(theme)?' selected':'')+'>'+esc(FONT_PRESETS[k].label)+'</option>';
@@ -430,21 +446,21 @@ body{
     document.getElementById("style-msg").textContent = "";
     document.getElementById("style-modal").hidden = false;
 
-    var inputBgTouched = false;
-    var inputBgEl = document.getElementById("style-inputbg");
-    if(inputBgEl) inputBgEl.addEventListener("input", function(){ inputBgTouched = true; });
+    var getBackground = showBg ? wireColorRow("style-background") : null;
+    var getBorder = showBg ? wireColorRow("style-border") : null;
+    var getInputBg = wireColorRow("style-inputbg");
 
     document.getElementById("style-save").onclick = function(){
       var newTheme = {
         ink: document.getElementById("style-ink").value,
-        inputBackground: inputBgTouched ? inputBgEl.value : theme.inputBackground,
+        inputBackground: getInputBg(),
         fontDisplay: FONT_PRESETS[document.getElementById("style-font").value].fontDisplay,
         fontAccent: FONT_PRESETS[document.getElementById("style-font").value].fontAccent,
         fontBody: FONT_PRESETS[document.getElementById("style-font").value].fontBody
       };
       if(showBg){
-        newTheme.background = document.getElementById("style-background").value;
-        newTheme.border = document.getElementById("style-border").value;
+        newTheme.background = getBackground();
+        newTheme.border = getBorder();
       }
       cfg.theme = newTheme;
       var msgEl = document.getElementById("style-msg");
