@@ -235,6 +235,8 @@
   var exitEl  = document.getElementById("ef-exit");
   var stageId = "complete";
   var exitCfg = null;
+  var idleBtnText = "Join the Waitlist";
+  var ALIGN_TO_JUSTIFY = {left:"flex-start", center:"center", right:"flex-end"};
 
   // Field labels/copy for this form are simple enough (mostly standard
   // fields) that the static markup above is used directly. We still confirm
@@ -245,8 +247,12 @@
   fetch(CONFIG.WORKER_BASE + "/config?form=" + CONFIG.FORM_KEY)
     .then(function(r){ if(!r.ok) throw new Error("config fetch failed"); return r.json(); })
     .then(function(cfg){
-      stageId = cfg.stages[0].id;
-      exitCfg = cfg.stages[0].exit || null;
+      var stage = cfg.stages[0];
+      stageId = stage.id;
+      exitCfg = stage.exit || null;
+      idleBtnText = stage.buttonText || "Join the Waitlist";
+      subBtn.textContent = idleBtnText;
+      document.querySelector(".ef-nav").style.justifyContent = ALIGN_TO_JUSTIFY[stage.buttonAlign] || "center";
       applyTheme(cfg.theme);
       loadingEl.hidden = true;
       form.hidden = false;
@@ -336,10 +342,34 @@
     })
     .catch(function(){
       subBtn.disabled = false;
-      subBtn.textContent = "Join the Waitlist";
+      subBtn.textContent = idleBtnText;
       fail("Something went wrong. Please try again, or email us if it keeps happening.");
     });
   });
+})();
+</script>
+<script>
+// Reports this page's rendered height to whatever window has it embedded in
+// an iframe, so the embed can size itself to actual content instead of a
+// fixed min-height (which otherwise leaves dead space below a short form).
+// Pairs with the listener script in admin.html's "Copy iframe embed"; that
+// embed code must be re-pasted wherever this page is already embedded to
+// pick up auto-sizing.
+(function(){
+  if(window.self === window.top) return;
+  // Measured on #ef-wl (not document.documentElement/body): the root
+  // <html>/<body> stretch to fill the iframe's current viewport when content
+  // is shorter, so scrollHeight would just echo back whatever height the
+  // iframe already has. #ef-wl has no height of its own (it's sized purely
+  // by its content), so it reports the real height to shrink/grow to.
+  var el = document.getElementById("ef-wl");
+  function report(){
+    try{ window.parent.postMessage({type:"ef-resize", height: Math.ceil(el.getBoundingClientRect().height)}, "*"); }
+    catch(e){}
+  }
+  window.addEventListener("load", report);
+  if(window.ResizeObserver){ new ResizeObserver(report).observe(el); }
+  else { setInterval(report, 500); }
 })();
 </script>
 </body>

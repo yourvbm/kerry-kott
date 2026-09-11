@@ -573,5 +573,29 @@
   }
 })();
 </script>
+<script>
+// Reports this page's rendered height to whatever window has it embedded in
+// an iframe, so the embed can size itself to actual content instead of a
+// fixed min-height (which otherwise leaves dead space below a short form).
+// Pairs with the listener script in admin.html's "Copy iframe embed"; that
+// embed code must be re-pasted wherever this page is already embedded to
+// pick up auto-sizing.
+(function(){
+  if(window.self === window.top) return;
+  // Measured on #ef-app (not document.documentElement/body): the root
+  // <html>/<body> stretch to fill the iframe's current viewport when content
+  // is shorter, so scrollHeight would just echo back whatever height the
+  // iframe already has. #ef-app has no height of its own (it's sized purely
+  // by its content), so it reports the real height to shrink/grow to.
+  var el = document.getElementById("ef-app");
+  function report(){
+    try{ window.parent.postMessage({type:"ef-resize", height: Math.ceil(el.getBoundingClientRect().height)}, "*"); }
+    catch(e){}
+  }
+  window.addEventListener("load", report);
+  if(window.ResizeObserver){ new ResizeObserver(report).observe(el); }
+  else { setInterval(report, 500); }
+})();
+</script>
 </body>
 </html>

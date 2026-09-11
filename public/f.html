@@ -135,7 +135,7 @@
 }
 
 /* Nav + buttons */
-#ef-generic .ef-nav{display:flex;gap:14px;align-items:center;margin-top:36px;}
+#ef-generic .ef-nav{display:flex;gap:14px;align-items:center;justify-content:flex-end;margin-top:36px;}
 #ef-generic .ef-btn{
   font-family:var(--font-accent);
   font-size:21px;
@@ -147,7 +147,6 @@
   padding:18px 40px;
   cursor:pointer;
   transition:transform .15s ease,opacity .2s ease;
-  margin-left:auto;
 }
 #ef-generic .ef-btn:hover{transform:translateY(-1px);opacity:.92;}
 #ef-generic .ef-btn:disabled{opacity:.5;cursor:default;transform:none;}
@@ -209,6 +208,8 @@
   var form      = document.getElementById("ef-form");
   var subBtn    = document.getElementById("ef-submit");
   var errEl     = document.getElementById("ef-error");
+  var idleBtnText = "Submit";
+  var ALIGN_TO_JUSTIFY = {left:"flex-start", center:"center", right:"flex-end"};
 
   if(!CONFIG.FORM_KEY){
     loadingEl.textContent = "No form specified.";
@@ -294,6 +295,9 @@
     document.title = cfg.title || "Kerry Kott";
     var stage = cfg.stages[0];
     document.getElementById("ef-fields").innerHTML = stage.fields.map(renderField).join("");
+    idleBtnText = stage.buttonText || "Submit";
+    subBtn.textContent = idleBtnText;
+    document.querySelector(".ef-nav").style.justifyContent = ALIGN_TO_JUSTIFY[stage.buttonAlign] || "flex-end";
     loadingEl.hidden = true;
     form.hidden = false;
     init(stage);
@@ -443,12 +447,36 @@
         }
       })
       .catch(function(){
-        subBtn.disabled = false; subBtn.textContent = "Submit";
+        subBtn.disabled = false; subBtn.textContent = idleBtnText;
         errEl.textContent = "Something went wrong submitting this form. Please try again, or email us if it keeps happening.";
         errEl.hidden = false;
       });
     });
   }
+})();
+</script>
+<script>
+// Reports this page's rendered height to whatever window has it embedded in
+// an iframe, so the embed can size itself to actual content instead of a
+// fixed min-height (which otherwise leaves dead space below a short form).
+// Pairs with the listener script in admin.html's "Copy iframe embed"; that
+// embed code must be re-pasted wherever this page is already embedded to
+// pick up auto-sizing.
+(function(){
+  if(window.self === window.top) return;
+  // Measured on #ef-generic (not document.documentElement/body): the root
+  // <html>/<body> stretch to fill the iframe's current viewport when content
+  // is shorter, so scrollHeight would just echo back whatever height the
+  // iframe already has. #ef-generic has no height of its own (it's sized
+  // purely by its content), so it reports the real height to shrink/grow to.
+  var el = document.getElementById("ef-generic");
+  function report(){
+    try{ window.parent.postMessage({type:"ef-resize", height: Math.ceil(el.getBoundingClientRect().height)}, "*"); }
+    catch(e){}
+  }
+  window.addEventListener("load", report);
+  if(window.ResizeObserver){ new ResizeObserver(report).observe(el); }
+  else { setInterval(report, 500); }
 })();
 </script>
 </body>

@@ -355,6 +355,12 @@ body{
       : SITE_ORIGIN + "/" + entry.path;
   }
   var TYPE_OPTIONS = ["text","email","tel","date","select","textarea","radio","checkbox-group","checkbox"];
+  var BUTTON_ALIGN_OPTIONS = ["left","center","right"];
+  // Matches each page's hardcoded fallback (used until Kerry sets her own).
+  var DEFAULT_BUTTON_TEXT = { intake: "Submit My Intake", waitlist: "Join the Waitlist" };
+  var DEFAULT_BUTTON_ALIGN = { waitlist: "center" };
+  function defaultButtonText(formKey){ return DEFAULT_BUTTON_TEXT[formKey] || "Submit"; }
+  function defaultButtonAlign(formKey){ return DEFAULT_BUTTON_ALIGN[formKey] || "right"; }
 
   /* ---------------- STYLE (colors + fonts) ---------------- */
   // Forms that render on a solid page background (Application/Intake and
@@ -777,7 +783,18 @@ body{
         + '</div>'
         + '</div>';
 
-      var embedCode = '<iframe src="'+url+'" style="width:100%;border:none;min-height:'+(entry.minHeight||700)+'px;"></iframe>';
+      // The listener resizes the iframe to the page's real content height
+      // (reported via postMessage; see the "ef-resize" script in each form
+      // page), so there's no dead space below a short form or clipping on a
+      // tall one. min-height is just the size before that first message
+      // arrives. Re-copy and re-paste this whole snippet anywhere it's
+      // already embedded to pick up auto-sizing.
+      var iframeId = "ef-iframe-" + key;
+      var embedCode = '<iframe id="'+iframeId+'" src="'+url+'" style="width:100%;border:none;min-height:'+(entry.minHeight||700)+'px;display:block;"></iframe>'
+        + '<script>(function(){var f=document.getElementById("'+iframeId+'");if(!f)return;'
+        + 'window.addEventListener("message",function(e){'
+        + 'if(e.source===f.contentWindow&&e.data&&e.data.type==="ef-resize"&&typeof e.data.height==="number"){'
+        + 'f.style.height=e.data.height+"px";}});})();<\/script>';
       html += '<div class="embed-box">'
         + '<div class="embed-row">'
         + '<code class="embed-code">'+esc(embedCode)+'</code>'
@@ -874,6 +891,20 @@ body{
     });
     html += '</div>';
     html += '<button type="button" class="add-field-btn" data-add-field-stage="'+sIdx+'">+ Add field</button>';
+    if(formKey !== "application"){
+      // Placed last, matching where the button actually sits on the live
+      // form: after every field.
+      var btnText = stage.buttonText || defaultButtonText(formKey);
+      var btnAlign = stage.buttonAlign || defaultButtonAlign(formKey);
+      html += '<div class="stage-row" style="margin-top:18px;"><label>Button text</label>'
+        + '<input type="text" class="btn-text-input" data-stage-idx="'+sIdx+'" value="'+esc(btnText)+'"></div>';
+      html += '<div class="stage-row"><label>Button alignment</label>'
+        + '<select class="btn-align-input" data-stage-idx="'+sIdx+'">'
+        + BUTTON_ALIGN_OPTIONS.map(function(a){
+            return '<option value="'+a+'"'+(a===btnAlign?' selected':'')+'>'+a.charAt(0).toUpperCase()+a.slice(1)+'</option>';
+          }).join("")
+        + '</select></div>';
+    }
     html += '</div>';
     return html;
   }
@@ -990,6 +1021,19 @@ body{
       inp.addEventListener("input", function(){
         var sIdx = +inp.getAttribute("data-stage-idx");
         cfg.stages[sIdx].exit.message = inp.value;
+      });
+    });
+    // Button text/alignment edits
+    Array.prototype.forEach.call(panelEl.querySelectorAll(".btn-text-input"), function(inp){
+      inp.addEventListener("input", function(){
+        var sIdx = +inp.getAttribute("data-stage-idx");
+        cfg.stages[sIdx].buttonText = inp.value;
+      });
+    });
+    Array.prototype.forEach.call(panelEl.querySelectorAll(".btn-align-input"), function(sel){
+      sel.addEventListener("change", function(){
+        var sIdx = +sel.getAttribute("data-stage-idx");
+        cfg.stages[sIdx].buttonAlign = sel.value;
       });
     });
 
