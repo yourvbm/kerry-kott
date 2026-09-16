@@ -238,29 +238,41 @@
   var idleBtnText = "Join the Waitlist";
   var ALIGN_TO_JUSTIFY = {left:"flex-start", center:"center", right:"flex-end"};
 
+  function buildForm(cfg){
+    var stage = cfg.stages[0];
+    stageId = stage.id;
+    exitCfg = stage.exit || null;
+    idleBtnText = stage.buttonText || "Join the Waitlist";
+    subBtn.textContent = idleBtnText;
+    document.querySelector(".ef-nav").style.justifyContent = ALIGN_TO_JUSTIFY[stage.buttonAlign] || "center";
+    applyTheme(cfg.theme);
+    applySuccessCopy(cfg.success);
+    loadingEl.hidden = true;
+    form.hidden = false;
+  }
+
   // Field labels/copy for this form are simple enough (mostly standard
   // fields) that the static markup above is used directly. We still confirm
   // the config exists before showing the form, so a KV outage fails loudly
   // instead of silently posting to a form Kerry may have reconfigured. The
   // eligibility gate ("Are you a woman?") IS read from config, so the tag
   // and disqualification message stay editable from the admin.
-  fetch(CONFIG.WORKER_BASE + "/config?form=" + CONFIG.FORM_KEY)
-    .then(function(r){ if(!r.ok) throw new Error("config fetch failed"); return r.json(); })
-    .then(function(cfg){
-      var stage = cfg.stages[0];
-      stageId = stage.id;
-      exitCfg = stage.exit || null;
-      idleBtnText = stage.buttonText || "Join the Waitlist";
-      subBtn.textContent = idleBtnText;
-      document.querySelector(".ef-nav").style.justifyContent = ALIGN_TO_JUSTIFY[stage.buttonAlign] || "center";
-      applyTheme(cfg.theme);
-      applySuccessCopy(cfg.success);
-      loadingEl.hidden = true;
-      form.hidden = false;
-    })
-    .catch(function(){
-      loadingEl.textContent = "This form couldn't load. Please refresh the page, or contact us if it keeps happening.";
-    });
+  //
+  // window.__EF_PREVIEW_CFG__ is set (by admin.html, in an inline <script>
+  // spliced into the iframe's srcdoc, before this script runs) when this
+  // page is loaded inside the admin's live preview pane instead of on
+  // Kerry's real site - it carries whatever's currently being edited,
+  // unsaved, so the preview builds from that instead of hitting the network.
+  if(window.__EF_PREVIEW_CFG__){
+    buildForm(window.__EF_PREVIEW_CFG__);
+  } else {
+    fetch(CONFIG.WORKER_BASE + "/config?form=" + CONFIG.FORM_KEY)
+      .then(function(r){ if(!r.ok) throw new Error("config fetch failed"); return r.json(); })
+      .then(function(cfg){ buildForm(cfg); })
+      .catch(function(){
+        loadingEl.textContent = "This form couldn't load. Please refresh the page, or contact us if it keeps happening.";
+      });
+  }
 
   function applyTheme(theme){
     if(!theme) return;
@@ -340,11 +352,16 @@
     subBtn.disabled = true;
     subBtn.textContent = "Sending...";
 
-    fetch(CONFIG.WORKER_BASE + "/submit?form=" + CONFIG.FORM_KEY + "&stage=" + stageId, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    })
+    // In the admin's live preview, never actually create a GHL contact -
+    // just pretend it worked so the success screen can still be checked.
+    var submitReq = window.__EF_PREVIEW_CFG__
+      ? Promise.resolve({ok:true, json:function(){return Promise.resolve({ok:true});}})
+      : fetch(CONFIG.WORKER_BASE + "/submit?form=" + CONFIG.FORM_KEY + "&stage=" + stageId, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+    submitReq
     .then(function(r){ if(!r.ok) throw new Error("bad status " + r.status); return r.json(); })
     .then(function(res){
       form.hidden = true;

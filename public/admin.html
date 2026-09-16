@@ -641,6 +641,51 @@ body{
   var subEl = document.getElementById("admin-sub");
   var panelEl = document.getElementById("panel");
 
+  /* ---------------- LIVE PREVIEW ----------------
+     Renders the actual form template with the currently-edited (possibly
+     unsaved) config, via iframe.srcdoc - no separate "Preview" button, no
+     Save needed first. The template's own JS reads window.__EF_PREVIEW_CFG__
+     (spliced in below) instead of fetching from the network when present. */
+  function buildPreviewSrcdoc(cfg, rawHtml){
+    var json = JSON.stringify(cfg).replace(/<\/script/gi, "<\\/script");
+    return rawHtml.replace("<head>", "<head>\n<script>window.__EF_PREVIEW_CFG__=" + json + ";<\/script>");
+  }
+  function refreshPreview(key, cfg, forceReload){
+    var frame = document.getElementById("preview-live-frame");
+    if(!frame || key !== state.activeForm) return;
+    var loadingEl2 = document.getElementById("preview-live-loading");
+    if(previewHtml[key]){
+      if(loadingEl2) loadingEl2.hidden = true;
+      frame.srcdoc = buildPreviewSrcdoc(cfg, previewHtml[key]);
+      return;
+    }
+    if(!forceReload) return; // already fetching from an earlier call
+    var entry = entryFor(key);
+    if(!entry) return;
+    fetch(embedUrl(entry))
+      .then(function(r){ if(!r.ok) throw new Error("preview fetch failed"); return r.text(); })
+      .then(function(rawHtml){
+        previewHtml[key] = rawHtml;
+        refreshPreview(key, state.configs[key]);
+      })
+      .catch(function(){
+        if(loadingEl2) loadingEl2.textContent = "Couldn't load the preview.";
+      });
+  }
+  function schedulePreviewRefresh(){
+    var key = state.activeForm;
+    var cfg = state.configs[key];
+    if(!cfg) return;
+    clearTimeout(previewDebounceTimer);
+    previewDebounceTimer = setTimeout(function(){ refreshPreview(key, cfg); }, 400);
+  }
+  // Delegated, registered once: covers every current and future edit field
+  // without wiring each one individually. Structural changes (add/delete
+  // field, reorder, etc.) go through renderPanel(), which rebuilds the
+  // preview iframe fresh on its own.
+  panelEl.addEventListener("input", schedulePreviewRefresh);
+  panelEl.addEventListener("change", schedulePreviewRefresh);
+
   var SECTION_SUB = {
     forms: "Edit field labels, options, tags &amp; evergreen copy — no code push needed.",
     calendars: "Paste a GHL calendar embed link to generate a branded booking page at schedule.kerrykott.com."
@@ -736,6 +781,9 @@ body{
   }
 
   function render(){
+    if(state.section !== "forms" || state.activeForm === null){
+      appEl.classList.remove("is-editing-form");
+    }
     if(state.section === "calendars"){
       tabsEl.hidden = true;
       if(CALENDARS === null){
@@ -1109,9 +1157,25 @@ body{
         + '</div>';
     }
 
-    panelEl.innerHTML = html;
+    if(entry){
+      appEl.classList.add("is-editing-form");
+      panelEl.innerHTML = '<div class="editor-grid">'
+        + '<div class="edit-col">' + html + '</div>'
+        + '<div class="preview-col">'
+        + '<div class="preview-live-head"><h2>Live preview</h2></div>'
+        + '<div class="preview-live-wrap">'
+        + '<iframe class="preview-live-frame" id="preview-live-frame" title="Live form preview"></iframe>'
+        + '<div class="preview-live-loading" id="preview-live-loading">Loading preview…</div>'
+        + '</div>'
+        + '</div>'
+        + '</div>';
+    } else {
+      appEl.classList.remove("is-editing-form");
+      panelEl.innerHTML = html;
+    }
 
     wirePanelEvents(key, cfg);
+    if(entry){ refreshPreview(key, cfg, true); }
 
     var styleOpenBtn = document.getElementById("style-open");
     if(styleOpenBtn){
@@ -1289,15 +1353,6 @@ body{
         }
       });
     }
-    // Live preview toggle
-    var previewBtn = document.getElementById("toolbar-preview");
-    if(previewBtn){
-      previewBtn.addEventListener("click", function(){
-        previewOpen[formKey] = !previewOpen[formKey];
-        renderPanel();
-      });
-    }
-
     // Confirmation message edits
     var successHeadingInp = document.getElementById("success-heading-input");
     if(successHeadingInp){

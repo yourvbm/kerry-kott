@@ -266,12 +266,21 @@
     return "";
   }
 
-  fetch(CONFIG.WORKER_BASE + "/config?form=" + CONFIG.FORM_KEY)
-    .then(function(r){ if(!r.ok) throw new Error("config fetch failed"); return r.json(); })
-    .then(function(cfg){ buildForm(cfg); })
-    .catch(function(){
-      loadingEl.textContent = "This form couldn't load. Please refresh the page, or contact us if it keeps happening.";
-    });
+  // window.__EF_PREVIEW_CFG__ is set (by admin.html, in an inline <script>
+  // spliced into the iframe's srcdoc, before this script runs) when this
+  // page is loaded inside the admin's live preview pane instead of on
+  // Kerry's real site - it carries whatever's currently being edited,
+  // unsaved, so the preview builds from that instead of hitting the network.
+  if(window.__EF_PREVIEW_CFG__){
+    buildForm(window.__EF_PREVIEW_CFG__);
+  } else {
+    fetch(CONFIG.WORKER_BASE + "/config?form=" + CONFIG.FORM_KEY)
+      .then(function(r){ if(!r.ok) throw new Error("config fetch failed"); return r.json(); })
+      .then(function(cfg){ buildForm(cfg); })
+      .catch(function(){
+        loadingEl.textContent = "This form couldn't load. Please refresh the page, or contact us if it keeps happening.";
+      });
+  }
 
   function applyTheme(theme){
     if(!theme) return;
@@ -446,11 +455,16 @@
       errEl.hidden = true;
       var d = collect();
       subBtn.disabled = true; subBtn.textContent = "Submitting...";
-      fetch(CONFIG.WORKER_BASE + "/submit?form=" + CONFIG.FORM_KEY + "&stage=" + stage.id, {
-        method: "POST",
-        headers: {"Content-Type":"application/json"},
-        body: JSON.stringify(d)
-      })
+      // In the admin's live preview, never actually create a GHL contact -
+      // just pretend it worked so the success screen can still be checked.
+      var submitReq = window.__EF_PREVIEW_CFG__
+        ? Promise.resolve({ok:true, json:function(){return Promise.resolve({ok:true});}})
+        : fetch(CONFIG.WORKER_BASE + "/submit?form=" + CONFIG.FORM_KEY + "&stage=" + stage.id, {
+            method: "POST",
+            headers: {"Content-Type":"application/json"},
+            body: JSON.stringify(d)
+          });
+      submitReq
       .then(function(r){ if(!r.ok) throw new Error("submit failed"); return r.json(); })
       .then(function(res){
         clearState();

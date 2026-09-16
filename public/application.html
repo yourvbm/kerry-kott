@@ -321,13 +321,22 @@
     sel.value = "United States";
   }
 
-  /* ---------- Fetch config, build the page ---------- */
-  fetch(CONFIG.WORKER_BASE + "/config?form=" + CONFIG.FORM_KEY)
-    .then(function(r){ if(!r.ok) throw new Error("config fetch failed"); return r.json(); })
-    .then(function(cfg){ buildForm(cfg); })
-    .catch(function(){
-      loadingEl.textContent = "This form couldn't load. Please refresh the page, or contact us if it keeps happening.";
-    });
+  /* ---------- Fetch config, build the page ----------
+     window.__EF_PREVIEW_CFG__ is set (by admin.html, in an inline <script>
+     spliced into the iframe's srcdoc, before this script runs) when this
+     page is loaded inside the admin's live preview pane instead of on
+     Kerry's real site — it carries whatever's currently being edited,
+     unsaved, so the preview builds from that instead of hitting the network. */
+  if(window.__EF_PREVIEW_CFG__){
+    buildForm(window.__EF_PREVIEW_CFG__);
+  } else {
+    fetch(CONFIG.WORKER_BASE + "/config?form=" + CONFIG.FORM_KEY)
+      .then(function(r){ if(!r.ok) throw new Error("config fetch failed"); return r.json(); })
+      .then(function(cfg){ buildForm(cfg); })
+      .catch(function(){
+        loadingEl.textContent = "This form couldn't load. Please refresh the page, or contact us if it keeps happening.";
+      });
+  }
 
   function applyTheme(theme){
     if(!theme) return;
@@ -449,6 +458,11 @@
     }
 
     function postSubmit(stageId, payload){
+      // In the admin's live preview, never actually create a GHL contact -
+      // just pretend it worked so the success screen can still be checked.
+      if(window.__EF_PREVIEW_CFG__){
+        return Promise.resolve({ok:true, json:function(){return Promise.resolve({ok:true});}});
+      }
       return fetch(CONFIG.WORKER_BASE + "/submit?form=" + CONFIG.FORM_KEY + "&stage=" + stageId, {
         method: "POST",
         headers: {"Content-Type":"application/json"},
