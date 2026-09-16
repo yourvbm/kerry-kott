@@ -57,6 +57,7 @@ const ALLOWED_ORIGINS = [
   "https://www.kerrykott.com",
   "https://go.kerrykott.com",
   "https://admin.kerrykott.com",
+  "https://schedule.kerrykott.com",
   "https://kerry-kott.pages.dev",
 ];
 
@@ -141,6 +142,90 @@ async function loadRegistry(env) {
 
 async function saveRegistry(env, registry) {
   await env.CONFIG.put("registry", JSON.stringify(registry));
+}
+
+// ---------- Calendars (schedule.kerrykott.com) ----------
+// One KV blob holding every calendar page Kerry has generated. Each entry:
+//   { id, slug, name, duration, platform, description, embedUrl }
+// `id` is assigned once and never changes (stable identity while editing);
+// `slug` is the public URL segment on schedule.kerrykott.com and can be
+// renamed freely as long as it stays unique. No per-calendar GHL side
+// effects, so unlike forms this is a single wholesale get/save, same shape
+// as the forms registry.
+
+async function loadCalendars(env) {
+  const raw = await env.CONFIG.get("calendars");
+  if (!raw) return [];
+  try { return JSON.parse(raw); } catch { return []; }
+}
+
+async function saveCalendars(env, calendars) {
+  await env.CONFIG.put("calendars", JSON.stringify(calendars));
+}
+
+const SLUG_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+
+// Kerry may paste GHL's whole <iframe> embed snippet instead of the bare
+// widget URL — pull the src out rather than reject it.
+function extractEmbedUrl(raw) {
+  const s = String(raw || "").trim();
+  const m = /<iframe[^>]*\ssrc=["']([^"']+)["']/i.exec(s);
+  return (m ? m[1] : s).trim();
+}
+
+function genCalId() {
+  return "cal_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+
+async function handleCalendarGet(request, env, cors) {
+  const slug = new URL(request.url).searchParams.get("slug");
+  if (!slug) return json({ error: "Missing slug" }, 400, cors);
+  const calendars = await loadCalendars(env);
+  const cal = calendars.find((c) => c.slug === slug);
+  if (!cal) return json({ error: "Not found" }, 404, cors);
+  return json(cal, 200, cors);
+}
+
+async function handleAdminCalendarsGet(request, env, cors) {
+  if (!requireAdmin(request, env)) return json({ error: "Unauthorized" }, 401, cors);
+  return json(await loadCalendars(env), 200, cors);
+}
+
+async function handleAdminCalendarsSave(request, env, cors) {
+  if (!requireAdmin(request, env)) return json({ error: "Unauthorized" }, 401, cors);
+  let d;
+  try { d = await request.json(); }
+  catch { return json({ error: "Bad JSON" }, 400, cors); }
+  if (!Array.isArray(d)) return json({ error: "Calendars must be an array" }, 400, cors);
+
+  const seenSlugs = new Set();
+  const out = [];
+  for (const c of d) {
+    const name = String(c.name || "").trim();
+    const slug = String(c.slug || "").trim().toLowerCase();
+    const embedUrl = extractEmbedUrl(c.embedUrl);
+    if (!name) return json({ error: "Every calendar needs a name." }, 400, cors);
+    if (!slug || !SLUG_RE.test(slug)) {
+      return json({ error: `"${name}" has an invalid slug — use lowercase letters, numbers, and hyphens only.` }, 400, cors);
+    }
+    if (seenSlugs.has(slug)) {
+      return json({ error: `The slug "${slug}" is used by more than one calendar.` }, 400, cors);
+    }
+    seenSlugs.add(slug);
+    if (!embedUrl) return json({ error: `"${name}" needs a GHL calendar embed link.` }, 400, cors);
+    out.push({
+      id: c.id || genCalId(),
+      slug,
+      name,
+      duration: String(c.duration || "").trim(),
+      platform: String(c.platform || "").trim(),
+      description: String(c.description || "").trim(),
+      embedUrl,
+    });
+  }
+
+  await saveCalendars(env, out);
+  return json(out, 200, cors);
 }
 
 function slugify(s) {
@@ -520,6 +605,21 @@ export default {
     // POST /admin/delete-form — protected
     if (request.method === "POST" && path === "/admin/delete-form") {
       return handleDeleteForm(request, env, cors);
+    }
+
+    // GET /calendar?slug=<slug> — public (cal.html on schedule.kerrykott.com)
+    if (request.method === "GET" && path === "/calendar") {
+      return handleCalendarGet(request, env, cors);
+    }
+
+    // GET /admin/calendars — protected
+    if (request.method === "GET" && path === "/admin/calendars") {
+      return handleAdminCalendarsGet(request, env, cors);
+    }
+
+    // POST /admin/calendars — protected (saves the whole list)
+    if (request.method === "POST" && path === "/admin/calendars") {
+      return handleAdminCalendarsSave(request, env, cors);
     }
 
     // ---- Legacy support: bare POST / (or POST /?form=waitlist) with no

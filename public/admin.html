@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>Kerry Kott Forms Admin</title>
+<title>Kerry Kott Admin</title>
 <link href="https://fonts.googleapis.com/css2?family=Sorts+Mill+Goudy:ital@0;1&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -191,8 +191,24 @@ body{
 }
 .copy-embed-btn:hover{opacity:.92;}
 .copy-msg{font-size:13px;color:var(--ok);}
-.preview-frame-wrap{margin-top:14px;border:1.5px solid var(--border);border-radius:10px;overflow:hidden;}
-.preview-frame{display:block;width:100%;height:640px;border:none;background:#fff;}
+/* Live side-by-side editor: left = fields, right = a real render of the
+   form (via iframe.srcdoc), rebuilt from the in-memory config on every
+   edit - no Save needed to see it. */
+#admin-app.is-editing-form{max-width:1440px;}
+.editor-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(360px,1fr);gap:28px;align-items:start;}
+.edit-col{min-width:0;}
+.preview-col{position:sticky;top:20px;min-width:0;}
+.preview-live-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;}
+.preview-live-head h2{font-family:var(--font-display);font-size:16px;margin:0;color:var(--muted);font-weight:600;}
+.preview-live-wrap{border:1.5px solid var(--border);border-radius:14px;overflow:hidden;background:#fff;position:relative;}
+.preview-live-frame{display:block;width:100%;height:calc(100vh - 140px);min-height:480px;border:none;background:#fff;}
+.preview-live-loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:13.5px;background:#fff;}
+@media (max-width:980px){
+  #admin-app.is-editing-form{max-width:920px;}
+  .editor-grid{grid-template-columns:minmax(0,1fr);}
+  .preview-col{position:static;}
+  .preview-live-frame{height:640px;}
+}
 
 .stage-card{
   background:var(--panel);border:1.5px solid var(--border);border-radius:14px;
@@ -293,7 +309,7 @@ body{
 <!-- ============ LOGIN GATE ============ -->
 <div id="admin-login">
   <img class="kk-logo" src="https://assets.cdn.filesafe.space/ps7itsG5PeLgg7TDwnGV/media/6a47eac4989afcfcc93100ed.png" alt="Kerry Kott">
-  <h1>🌿 Forms Admin</h1>
+  <h1>🌿 Admin</h1>
   <p>Enter the admin password to edit form fields, tags, and copy.</p>
   <input type="password" id="login-pw" placeholder="Password" autocomplete="current-password">
   <button type="button" id="login-btn">Log In</button>
@@ -304,8 +320,13 @@ body{
 <div id="admin-app" hidden>
   <img class="kk-logo kk-logo-app" src="https://assets.cdn.filesafe.space/ps7itsG5PeLgg7TDwnGV/media/6a47eac4989afcfcc93100ed.png" alt="Kerry Kott">
   <div class="admin-head">
-    <h1><button type="button" id="home-link">🌿 Forms Admin</button></h1>
-    <div class="sub">Edit field labels, options, tags &amp; evergreen copy — no code push needed.</div>
+    <h1><button type="button" id="home-link">🌿 Admin</button></h1>
+    <div class="sub" id="admin-sub">Edit field labels, options, tags &amp; evergreen copy — no code push needed.</div>
+  </div>
+
+  <div class="tabs" id="section-tabs">
+    <button type="button" class="tab-btn active" data-section="forms">Forms</button>
+    <button type="button" class="tab-btn" data-section="calendars">Calendars</button>
   </div>
 
   <div class="tabs" id="tabs" hidden></div>
@@ -332,15 +353,15 @@ body{
   </div>
 </div>
 
-<!-- ============ DELETE-FORM MODAL ============ -->
+<!-- ============ DELETE MODAL (shared by forms & calendars) ============ -->
 <div id="delete-modal" class="modal-backdrop" hidden>
   <div class="modal-card">
     <div class="modal-head">
-      <h2>⚠️ Delete this form?</h2>
+      <h2 id="delete-title">⚠️ Delete this form?</h2>
       <button type="button" id="delete-close" class="modal-x" aria-label="Close">✕</button>
     </div>
     <p class="delete-warning" id="delete-warning"></p>
-    <label class="mini">Type the form's name to confirm: <strong id="delete-confirm-name"></strong></label>
+    <label class="mini">Type <span id="delete-confirm-label-text">the form's</span> name to confirm: <strong id="delete-confirm-name"></strong></label>
     <input type="text" id="delete-confirm-input" autocomplete="off">
     <div class="save-row">
       <button type="button" class="delete-confirm-btn" id="delete-confirm-btn" disabled>Delete Forever</button>
@@ -354,8 +375,12 @@ body{
   "use strict";
   var WORKER_BASE = "https://kerry-forms.miriam-68c.workers.dev";
   var SITE_ORIGIN = "https://admin.kerrykott.com";
+  var CAL_ORIGIN = "https://schedule.kerrykott.com";
   var FORMS = []; // loaded from /admin/registry after login
-  var previewOpen = {}; // formKey -> bool, resets on tab switch (fine)
+  var CALENDARS = null; // loaded from /admin/calendars after login (null = not yet loaded)
+  var previewHtml = {}; // formKey -> raw template HTML text, fetched once and reused
+  var previewDebounceTimer = null;
+  var calPreviewOpen = {}; // calId -> bool
 
   function entryFor(key){ return FORMS.filter(function(f){ return f.key===key; })[0]; }
   function embedUrl(entry){
@@ -363,6 +388,12 @@ body{
       ? SITE_ORIGIN + "/" + entry.path + "?form=" + entry.key
       : SITE_ORIGIN + "/" + entry.path;
   }
+
+  // A calendar has no server id until its first save, so identify it in the
+  // UI by id once it exists, or by the client-only _tempId before that.
+  function calendarKey(c){ return c.id || c._tempId; }
+  function calendarEntryByKey(key){ return (CALENDARS||[]).filter(function(c){ return calendarKey(c)===key; })[0]; }
+  function calendarUrl(c){ return CAL_ORIGIN + "/" + (c.slug || ""); }
   var TYPE_OPTIONS = ["text","email","tel","date","select","textarea","radio","checkbox-group","checkbox"];
   var BUTTON_ALIGN_OPTIONS = ["left","center","right"];
   // Matches each page's hardcoded fallback (used until Kerry sets her own).
@@ -510,6 +541,8 @@ body{
 
   /* ---------------- DELETE FORM ---------------- */
   function openDeleteModal(key, label){
+    document.getElementById("delete-title").textContent = "⚠️ Delete this form?";
+    document.getElementById("delete-confirm-label-text").textContent = "the form's";
     document.getElementById("delete-warning").textContent =
       'This permanently deletes "'+label+'" — every field, tag, and style choice on it. ' +
       'If its iframe is embedded anywhere on Kerry\'s site, that embed will go blank immediately. ' +
@@ -547,8 +580,56 @@ body{
     if(e.target.id === "delete-modal") e.target.hidden = true;
   });
 
+  /* ---------------- DELETE CALENDAR ---------------- */
+  function openDeleteCalendarModal(calKey, label){
+    document.getElementById("delete-title").textContent = "⚠️ Delete this calendar?";
+    document.getElementById("delete-confirm-label-text").textContent = "the calendar's";
+    document.getElementById("delete-warning").textContent =
+      'This permanently deletes "'+label+'" and its page. ' +
+      calendarUrl(calendarEntryByKey(calKey)) + ' will 404 immediately. ' +
+      'This cannot be undone.';
+    document.getElementById("delete-confirm-name").textContent = label;
+    var input = document.getElementById("delete-confirm-input");
+    var btn = document.getElementById("delete-confirm-btn");
+    input.value = "";
+    btn.disabled = true;
+    document.getElementById("delete-msg").textContent = "";
+    document.getElementById("delete-modal").hidden = false;
+
+    input.oninput = function(){ btn.disabled = (input.value !== label); };
+
+    btn.onclick = function(){
+      var msgEl = document.getElementById("delete-msg");
+      var cal = calendarEntryByKey(calKey);
+      var next = CALENDARS.filter(function(c){ return calendarKey(c) !== calKey; });
+
+      // Never-saved calendar: nothing on the server to delete yet.
+      if(!cal || !cal.id){
+        document.getElementById("delete-modal").hidden = true;
+        CALENDARS = next;
+        state.activeCalendar = null;
+        render();
+        return;
+      }
+
+      btn.disabled = true; msgEl.textContent = "Deleting...";
+      fetch(WORKER_BASE + "/admin/calendars", {
+        method: "POST", headers: authHeaders(), body: JSON.stringify(next)
+      })
+      .then(function(r){ return r.json().then(function(body){ return {ok:r.ok, body:body}; }); })
+      .then(function(res){
+        if(!res.ok){ btn.disabled = false; msgEl.textContent = res.body.error || "Couldn't delete. Try again."; return; }
+        document.getElementById("delete-modal").hidden = true;
+        CALENDARS = res.body;
+        state.activeCalendar = null;
+        render();
+      })
+      .catch(function(){ btn.disabled = false; msgEl.textContent = "Couldn't delete. Try again."; });
+    };
+  }
+
   var pw = null;
-  var state = {activeForm: null, configs: {}, saveMsg: {}, loading: {}};
+  var state = {section: "forms", activeForm: null, configs: {}, saveMsg: {}, loading: {}, activeCalendar: null, calSaveMsg: ""};
 
   var loginEl = document.getElementById("admin-login");
   var appEl   = document.getElementById("admin-app");
@@ -556,7 +637,27 @@ body{
   var loginPw  = document.getElementById("login-pw");
   var loginErr = document.getElementById("login-error");
   var tabsEl = document.getElementById("tabs");
+  var sectionTabsEl = document.getElementById("section-tabs");
+  var subEl = document.getElementById("admin-sub");
   var panelEl = document.getElementById("panel");
+
+  var SECTION_SUB = {
+    forms: "Edit field labels, options, tags &amp; evergreen copy — no code push needed.",
+    calendars: "Paste a GHL calendar embed link to generate a branded booking page at schedule.kerrykott.com."
+  };
+
+  Array.prototype.forEach.call(sectionTabsEl.querySelectorAll(".tab-btn"), function(btn){
+    btn.addEventListener("click", function(){
+      var section = btn.getAttribute("data-section");
+      if(section === state.section) return;
+      state.section = section;
+      Array.prototype.forEach.call(sectionTabsEl.querySelectorAll(".tab-btn"), function(b){
+        b.classList.toggle("active", b === btn);
+      });
+      subEl.innerHTML = SECTION_SUB[section];
+      render();
+    });
+  });
 
   function esc(s){
     return String(s == null ? "" : s)
@@ -620,6 +721,12 @@ body{
       .then(function(reg){ FORMS = reg; });
   }
 
+  function loadCalendars(){
+    return fetch(WORKER_BASE + "/admin/calendars", {headers: authHeaders()})
+      .then(function(r){ if(!r.ok) throw new Error("calendars fetch failed"); return r.json(); })
+      .then(function(cals){ CALENDARS = cals; });
+  }
+
   function showApp(){
     loginEl.hidden = true;
     appEl.hidden = false;
@@ -629,6 +736,19 @@ body{
   }
 
   function render(){
+    if(state.section === "calendars"){
+      tabsEl.hidden = true;
+      if(CALENDARS === null){
+        panelEl.innerHTML = '<p class="panel-loading">Loading calendars...</p>';
+        loadCalendars()
+          .then(render)
+          .catch(function(){ panelEl.innerHTML = '<p class="panel-error">Couldn\'t load the calendar list. Please refresh.</p>'; });
+        return;
+      }
+      if(state.activeCalendar === null){ renderCalendarsHome(); }
+      else { renderCalendarPanel(); }
+      return;
+    }
     if(state.activeForm === null){
       tabsEl.hidden = true;
       renderHome();
@@ -640,7 +760,8 @@ body{
   }
 
   function goHome(){
-    state.activeForm = null;
+    if(state.section === "calendars"){ state.activeCalendar = null; }
+    else { state.activeForm = null; }
     render();
   }
   document.getElementById("home-link").addEventListener("click", goHome);
@@ -705,6 +826,160 @@ body{
         });
       })
       .catch(function(){ btn.disabled = false; msgEl.textContent = "Couldn't reach the server."; msgEl.className = "save-msg err"; });
+    });
+  }
+
+  /* ================== CALENDARS ================== */
+
+  function renderCalendarsHome(){
+    var html = '<div class="home-list">' + CALENDARS.map(function(c){
+      var key = calendarKey(c);
+      return '<div class="home-card">'
+        + '<div class="home-card-main"><h3>'+esc(c.name || "(untitled)")+'</h3>'
+        + '<code class="home-card-url">'+esc(calendarUrl(c))+'</code><br>'
+        + '<button type="button" class="home-card-delete" data-cal="'+esc(key)+'" data-label="'+esc(c.name || "(untitled)")+'">Delete this calendar</button>'
+        + '</div>'
+        + '<button type="button" class="home-card-btn" data-cal="'+esc(key)+'">Edit →</button>'
+        + '</div>';
+    }).join("") + '</div>';
+
+    if(!CALENDARS.length){
+      html = '<p class="stage-note">No calendars yet. Add one below — paste a GHL calendar\'s embed link and it\'ll generate a branded page at schedule.kerrykott.com.</p>' + html;
+    }
+
+    html += '<button type="button" class="add-form-btn" id="add-cal-toggle">+ Add Calendar</button>';
+
+    panelEl.innerHTML = html;
+    Array.prototype.forEach.call(panelEl.querySelectorAll(".home-card-btn"), function(btn){
+      btn.addEventListener("click", function(){
+        state.activeCalendar = btn.getAttribute("data-cal");
+        render();
+      });
+    });
+    Array.prototype.forEach.call(panelEl.querySelectorAll(".home-card-delete"), function(btn){
+      btn.addEventListener("click", function(){
+        openDeleteCalendarModal(btn.getAttribute("data-cal"), btn.getAttribute("data-label"));
+      });
+    });
+
+    document.getElementById("add-cal-toggle").addEventListener("click", function(){
+      var tempId = "new_" + Date.now().toString(36);
+      CALENDARS.push({id: null, _tempId: tempId, slug: "", name: "New Calendar", duration: "", platform: "", description: "", embedUrl: ""});
+      state.activeCalendar = tempId;
+      render();
+    });
+  }
+
+  function slugifyClient(s){
+    return String(s||"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,60);
+  }
+
+  function renderCalendarPanel(){
+    var key = state.activeCalendar;
+    var cal = calendarEntryByKey(key);
+    if(!cal){ state.activeCalendar = null; renderCalendarsHome(); return; }
+
+    var isNew = !cal.id;
+    var url = calendarUrl(cal);
+    var isOpen = !!calPreviewOpen[key];
+
+    var html = '<div class="toolbar-row">'
+      + '<button type="button" class="toolbar-btn" id="cal-preview-toggle">👁&nbsp; '+(isOpen?"Hide preview":"Preview page")+'</button>'
+      + '</div>';
+
+    if(isOpen){
+      html += '<div class="preview-frame-wrap"><iframe class="preview-frame" src="'+url+'"></iframe></div>';
+    }
+
+    html += '<div class="embed-box">'
+      + '<div class="embed-row">'
+      + '<code class="embed-code" id="cal-url-display">'+esc(url)+'</code>'
+      + '<button type="button" class="copy-embed-btn" id="cal-copy-url">Copy page link</button>'
+      + '<span class="copy-msg" id="cal-copy-msg"></span>'
+      + '</div>'
+      + '</div>';
+
+    html += '<div class="stage-card">'
+      + '<h2>Details</h2>'
+      + '<div class="stage-row"><label>Calendar name</label>'
+      + '<input type="text" id="cal-name" value="'+esc(cal.name)+'"></div>'
+      + '<div class="stage-row"><label>Page URL — schedule.kerrykott.com/</label>'
+      + '<input type="text" id="cal-slug" value="'+esc(cal.slug)+'" placeholder="private-retreat-intake"></div>'
+      + '<p class="stage-note">Lowercase letters, numbers, and hyphens only — this is edited at any time without breaking the calendar itself, but anywhere the old link is already shared will stop working.</p>'
+      + '<div class="stage-row"><label>Duration</label>'
+      + '<input type="text" id="cal-duration" value="'+esc(cal.duration)+'" placeholder="45 minutes"></div>'
+      + '<div class="stage-row"><label>Platform</label>'
+      + '<input type="text" id="cal-platform" value="'+esc(cal.platform)+'" placeholder="Zoom"></div>'
+      + '<div class="stage-row"><label>Description</label>'
+      + '<textarea id="cal-description" rows="4">'+esc(cal.description)+'</textarea></div>'
+      + '<div class="stage-row"><label>GHL calendar embed link</label>'
+      + '<textarea id="cal-embed" rows="3" placeholder="Paste the URL from GHL\'s calendar &rarr; Embed, or the whole &lt;iframe&gt; snippet">'+esc(cal.embedUrl)+'</textarea></div>'
+      + '<p class="stage-note">In GHL: Calendars &rarr; the calendar &rarr; Embed. Paste either the widget URL or the full embed code here — either works.</p>'
+      + '</div>';
+
+    html += '<div class="save-row">'
+      + '<button type="button" class="save-btn" id="cal-save-btn">Save Changes</button>'
+      + '<span class="save-msg" id="cal-save-msg"></span>'
+      + '</div>';
+
+    html += '<div class="danger-zone">'
+      + '<button type="button" class="danger-zone-btn" id="cal-danger-delete" data-cal="'+esc(key)+'" data-label="'+esc(cal.name || "(untitled)")+'">Delete this calendar</button>'
+      + '</div>';
+
+    panelEl.innerHTML = html;
+
+    var previewBtn = document.getElementById("cal-preview-toggle");
+    if(!isNew){
+      previewBtn.addEventListener("click", function(){ calPreviewOpen[key] = !calPreviewOpen[key]; render(); });
+    } else {
+      previewBtn.disabled = true;
+      previewBtn.title = "Save this calendar first to preview its page.";
+    }
+
+    document.getElementById("cal-copy-url").addEventListener("click", function(){
+      var msgEl = document.getElementById("cal-copy-msg");
+      var liveUrl = calendarUrl(cal); // re-read: the slug field may have changed since render
+      function showCopied(){ msgEl.textContent = "Copied!"; setTimeout(function(){ if(msgEl) msgEl.textContent = ""; }, 2000); }
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(liveUrl).then(showCopied, function(){ fallbackCopy(liveUrl, showCopied); });
+      } else { fallbackCopy(liveUrl, showCopied); }
+    });
+
+    document.getElementById("cal-name").addEventListener("input", function(e){ cal.name = e.target.value; });
+    document.getElementById("cal-slug").addEventListener("input", function(e){
+      cal.slug = slugifyClient(e.target.value);
+      document.getElementById("cal-url-display").textContent = calendarUrl(cal);
+    });
+    document.getElementById("cal-duration").addEventListener("input", function(e){ cal.duration = e.target.value; });
+    document.getElementById("cal-platform").addEventListener("input", function(e){ cal.platform = e.target.value; });
+    document.getElementById("cal-description").addEventListener("input", function(e){ cal.description = e.target.value; });
+    document.getElementById("cal-embed").addEventListener("input", function(e){ cal.embedUrl = e.target.value; });
+
+    document.getElementById("cal-danger-delete").addEventListener("click", function(){
+      openDeleteCalendarModal(key, cal.name || "(untitled)");
+    });
+
+    document.getElementById("cal-save-btn").addEventListener("click", function(){
+      var saveBtn = document.getElementById("cal-save-btn");
+      var msgEl = document.getElementById("cal-save-msg");
+      saveBtn.disabled = true; saveBtn.textContent = "Saving..."; msgEl.textContent = ""; msgEl.className = "save-msg";
+      fetch(WORKER_BASE + "/admin/calendars", {
+        method: "POST", headers: authHeaders(), body: JSON.stringify(CALENDARS)
+      })
+      .then(function(r){ return r.json().then(function(body){ return {ok:r.ok, body:body}; }); })
+      .then(function(res){
+        saveBtn.disabled = false; saveBtn.textContent = "Save Changes";
+        if(!res.ok){ msgEl.textContent = "Save failed: " + (res.body && res.body.error || "unknown error"); msgEl.className = "save-msg err"; return; }
+        CALENDARS = res.body;
+        var saved = CALENDARS.filter(function(c){ return c.slug === cal.slug; })[0];
+        state.activeCalendar = saved ? calendarKey(saved) : null;
+        msgEl.textContent = "Saved.";
+        render();
+      })
+      .catch(function(err){
+        saveBtn.disabled = false; saveBtn.textContent = "Save Changes";
+        msgEl.textContent = "Save failed: " + err.message; msgEl.className = "save-msg err";
+      });
     });
   }
 
@@ -773,16 +1048,10 @@ body{
     var entry = entryFor(key);
     if(entry){
       var url = embedUrl(entry);
-      var isOpen = !!previewOpen[key];
 
       html += '<div class="toolbar-row">'
         + '<button type="button" class="toolbar-btn toolbar-btn-primary" id="style-open">🎨&nbsp; Style (colors &amp; fonts)</button>'
-        + '<button type="button" class="toolbar-btn" data-preview-key="'+key+'" id="toolbar-preview">👁&nbsp; '+(isOpen?"Hide preview":"Preview form")+'</button>'
         + '</div>';
-
-      if(isOpen){
-        html += '<div class="preview-frame-wrap"><iframe class="preview-frame" src="'+url+'"></iframe></div>';
-      }
 
       html += '<div class="rename-row">'
         + '<label class="mini">Form name (internal — shown here and on the home screen only, never on the live form)</label>'
@@ -955,6 +1224,9 @@ body{
 
     html += '</div>'; // field-row-top
 
+    html += '<div style="margin-top:8px;"><label class="mini">Subtitle (optional, shown under the question)</label>'
+      + '<input type="text" class="f-note" placeholder="e.g. While we will do our best to accommodate..." value="'+esc(field.note||"")+'"></div>';
+
     if(field.locked){
       html += '<span class="locked-note">used to match this contact — don\'t delete</span>';
     }
@@ -1101,6 +1373,9 @@ body{
         }
         rowEl.querySelector(".f-required").addEventListener("change", function(e){
           field.required = e.target.checked;
+        });
+        rowEl.querySelector(".f-note").addEventListener("input", function(e){
+          field.note = e.target.value;
         });
         rowEl.querySelector(".f-up").addEventListener("click", function(){
           if(fIdx > 0){
