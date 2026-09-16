@@ -72,7 +72,7 @@ function renderPage(cal, slug) {
   background:#fff; border:1px solid rgba(16,24,40,.12); border-radius:12px;
   overflow:hidden; align-self:start;
 }
-#ef-cal .ef-cal-widget iframe{width:100%;border:none;min-height:560px;display:block;}
+#ef-cal .ef-cal-widget iframe{width:100%;border:none;height:420px;display:block;}
 @media (max-width:760px){
   #ef-cal .ef-cal-card{grid-template-columns:1fr;border-radius:16px;padding:30px 26px;gap:26px;}
 }
@@ -94,26 +94,31 @@ function renderPage(cal, slug) {
     </div>
   </div>
 </div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/iframe-resizer/4.3.9/iframeResizer.min.js"></script>
 <script>
 (function(){
-  // The GHL booking widget posts its real content height on every resize
-  // (including the date-picker -> booking-form jump) as
-  // ["highlevel.setHeight", {height, id}]. Nothing applies it unless we
-  // listen - and GHL's own form_embed.js is the WRONG fix here: it hides
-  // the iframe until an "iframeLoaded" message the booking widget never
-  // sends, so the calendar would stay invisible forever.
-  var iframe = document.getElementById('ef-cal-iframe');
-  window.addEventListener('message', function(e){
-    if(e.source !== iframe.contentWindow) return;
-    var data = e.data;
-    try{ if(typeof data === 'string') data = JSON.parse(data); }catch(err){ return; }
-    if(!Array.isArray(data) || data[0] !== 'highlevel.setHeight') return;
-    var h = data[1] && data[1].height;
-    if(typeof h === 'number' && h > 0){
-      iframe.style.height = h + 'px';
-      iframe.style.minHeight = h + 'px';
-    }
-  });
+  // GHL's booking widget already speaks the iframe-resizer child protocol
+  // (it posts "[iFrameSizer]..." handshake messages on load - confirmed by
+  // capturing them directly), but nothing happens with them unless the
+  // PARENT half of iframe-resizer is running to complete the handshake.
+  // Once it is, the widget reports its real height continuously via a
+  // MutationObserver on every step of the flow (date -> time slot ->
+  // booking form -> deposit/payment, whatever a given calendar has), not
+  // just once at load - unlike the widget's one-shot "highlevel.setHeight"
+  // message, which only ever reports the height of the FIRST screen and
+  // would leave later, taller steps clipped.
+  //
+  // checkOrigin:false: the widget lives on a different subdomain
+  // (links.kerrykott.com) than this page - that's expected, not a
+  // cross-site risk, since it's Kerry's own GHL calendar.
+  //
+  // Do NOT use GHL's form_embed.js here instead - that script is for
+  // forms/surveys, hides every iframe until an "iframeLoaded" message the
+  // booking widget never sends, and the calendar would stay invisible
+  // forever.
+  if(window.iFrameResize){
+    window.iFrameResize({ checkOrigin: false, heightCalculationMethod: 'lowestElement' }, '#ef-cal-iframe');
+  }
 })();
 </script>
 </body>
