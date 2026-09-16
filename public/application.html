@@ -652,7 +652,19 @@ html,body{margin:0;padding:0;}
   }
   window.addEventListener("load", report);
   if(window.ResizeObserver){ new ResizeObserver(report).observe(el); }
-  else { setInterval(report, 500); }
+  // Safety net: ResizeObserver plus the "load" listener should always
+  // catch the transition from the tiny loading placeholder to the real
+  // content, but if that one report is ever missed - a slow connection,
+  // a timing race with when the observer attaches - there is nothing left
+  // to trigger a correction, and the embed stays undersized permanently.
+  // Polling too for the first several seconds (deduped by report() itself,
+  // so this costs nothing once the real height has already gone out) gives
+  // a missed report a second chance instead of a silent, permanent failure.
+  var pollUntil = Date.now() + 8000;
+  var pollTimer = setInterval(function(){
+    report();
+    if(Date.now() > pollUntil) clearInterval(pollTimer);
+  }, 300);
 })();
 </script>
 </body>
