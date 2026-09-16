@@ -204,7 +204,7 @@
     </form>
 
     <div class="ef-success" id="ef-success" hidden>
-      <div class="ef-sparkle" aria-hidden="true">&#x2728;</div>
+      <div class="ef-sparkle" id="ef-success-emoji" aria-hidden="true" hidden></div>
       <h3 class="ef-step-title" id="ef-success-heading">You&#x2019;re on the&nbsp;list!</h3>
       <p class="ef-intro" id="ef-success-message">You will be the first to know the moment the next Earth &amp; Flesh opens. Keep an eye on your inbox, something beautiful is on the&nbsp;way. &#x1F90E;</p>
     </div>
@@ -293,8 +293,10 @@
   }
   function applySuccessCopy(success){
     if(!success) return;
+    var e = document.getElementById("ef-success-emoji");
     var h = document.getElementById("ef-success-heading");
     var m = document.getElementById("ef-success-message");
+    if(e){ if(success.emoji){ e.textContent = success.emoji; e.hidden = false; } else { e.hidden = true; } }
     if(h && success.heading) h.textContent = bindOrphan(success.heading);
     if(m && success.message) m.textContent = bindOrphan(success.message);
   }

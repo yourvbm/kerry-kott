@@ -152,6 +152,7 @@
 #ef-generic .ef-btn:disabled{opacity:.5;cursor:default;transform:none;}
 #ef-generic .ef-error{color:#a8463c;font-size:17px;margin:22px 0 0;}
 #ef-generic .ef-success{text-align:center;padding:40px 10px;}
+#ef-generic .ef-success-emoji{font-size:48px;line-height:1;margin:0 0 16px;}
 #ef-generic .ef-loading{font-size:16px;color:var(--muted);padding:20px 0;}
 
 @media (max-width:560px){
@@ -179,6 +180,7 @@
     </form>
 
     <div class="ef-success" id="ef-success" hidden>
+      <div class="ef-success-emoji" id="ef-success-emoji" aria-hidden="true" hidden></div>
       <h3 class="ef-title" style="font-size:clamp(28px,4vw,40px);" id="ef-success-heading">Thank you.</h3>
       <p class="ef-intro" id="ef-success-message">Your submission was received.</p>
     </div>
@@ -312,8 +314,10 @@
   }
   function applySuccessCopy(success){
     if(!success) return;
+    var e = document.getElementById("ef-success-emoji");
     var h = document.getElementById("ef-success-heading");
     var m = document.getElementById("ef-success-message");
+    if(e){ if(success.emoji){ e.textContent = success.emoji; e.hidden = false; } else { e.hidden = true; } }
     if(h && success.heading) h.textContent = bindOrphan(success.heading);
     if(m && success.message) m.textContent = bindOrphan(success.message);
   }

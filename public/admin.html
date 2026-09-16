@@ -1159,6 +1159,8 @@ body{
     html += '<div class="confirm-card">'
       + '<h2>Confirmation Message</h2>'
       + '<p class="stage-note">What people see on the page right after they submit — keep it short, a one-line heading plus a sentence works best.</p>'
+      + '<div class="stage-row"><label>Emoji (optional)</label>'
+      + '<input type="text" id="success-emoji-input" placeholder="e.g. ✨ or 🌿 — leave blank for none" value="'+esc(cfg.success.emoji||"")+'"></div>'
       + '<div class="stage-row"><label>Heading</label>'
       + '<input type="text" id="success-heading-input" value="'+esc(cfg.success.heading)+'"></div>'
       + '<div class="stage-row"><label>Message</label>'
@@ -1400,6 +1402,13 @@ body{
       });
     }
     // Confirmation message edits
+    var successEmojiInp = document.getElementById("success-emoji-input");
+    if(successEmojiInp){
+      successEmojiInp.addEventListener("input", function(){
+        cfg.success = cfg.success || {};
+        cfg.success.emoji = successEmojiInp.value;
+      });
+    }
     var successHeadingInp = document.getElementById("success-heading-input");
     if(successHeadingInp){
       successHeadingInp.addEventListener("input", function(){
