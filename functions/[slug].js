@@ -39,42 +39,38 @@ function renderPage(cal, slug) {
 <title>${name} — Kerry Kott</title>
 <meta name="robots" content="noindex, follow">
 <link rel="canonical" href="${canonical}">
-<link href="https://fonts.googleapis.com/css2?family=Sorts+Mill+Goudy:ital@0;1&family=Playfair+Display:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Sorts+Mill+Goudy:ital@0;1&family=EB+Garamond:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
 <style>
-@font-face {
-  font-family: 'sunflora-hksqi6';
-  font-style: normal; font-weight: 400; font-display: swap;
-  src: url('https://file.squarespace-cdn.com/content/v2/namespaces/fonts/libraries/5fad387af44df56affb45c67/assets/37ab1441-81a8-45bc-8fea-80033769339c/font.woff2') format('woff2');
-}
 #ef-cal{
-  --cream:#F5F0EB; --ink:#2A221E; --border:#C7BCAD; --muted:#8C8073; --panel:#FBF9F6;
-  --font-display:"sunflora-hksqi6","Playfair Display",Georgia,"Times New Roman",serif;
+  --cream:#F5F0EB; --ink:#0A0A0A; --border:#C7BCAD; --muted:#3A3630; --panel:#FBF9F6;
+  --font-display:"EB Garamond",Georgia,"Times New Roman",serif;
   --font-body:"Sorts Mill Goudy",Georgia,"Times New Roman",serif;
   background:var(--cream); color:var(--ink); font-family:var(--font-body);
   -webkit-font-smoothing:antialiased; line-height:1.5; min-height:100vh;
 }
 #ef-cal *{box-sizing:border-box;}
-#ef-cal .ef-cal-shell{max-width:900px;margin:0 auto;padding:44px 24px 64px;}
-#ef-cal .ef-cal-logo{display:block;width:220px;max-width:70%;height:auto;margin:0 auto 36px;}
+#ef-cal .ef-cal-shell{max-width:1160px;margin:0 auto;padding:48px 24px 64px;}
+#ef-cal .ef-cal-logo{display:block;width:300px;max-width:75%;height:auto;margin:0 auto 40px;}
 #ef-cal .ef-cal-card{
-  background:#fff; border:1.5px solid var(--border); border-radius:20px;
-  display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.1fr); gap:36px;
-  padding:44px 40px;
+  background:#fff; border:1px solid var(--border); border-radius:8px;
+  display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.6fr); gap:40px;
+  padding:48px 44px;
 }
 #ef-cal .ef-cal-info{padding:4px 0 0;}
 #ef-cal .ef-cal-name{
-  font-family:var(--font-display); font-weight:700; font-size:clamp(24px,3vw,30px);
-  line-height:1.2; margin:0 0 8px;
+  font-family:var(--font-display); font-weight:700; font-size:clamp(24px,2.6vw,28px);
+  line-height:1.2; margin:0 0 8px; color:var(--ink);
 }
-#ef-cal .ef-cal-meta{font-size:15px;color:var(--muted);margin:0 0 22px;}
-#ef-cal .ef-cal-desc{font-size:16px;line-height:1.65;margin:0;white-space:pre-wrap;}
+#ef-cal .ef-cal-meta{font-size:14px;color:var(--muted);margin:0 0 22px;}
+#ef-cal .ef-cal-desc{font-size:16px;line-height:1.75;margin:0;white-space:pre-wrap;}
 #ef-cal .ef-cal-widget{
-  background:#fff; border:1px solid rgba(16,24,40,.12); border-radius:12px;
-  overflow:hidden; align-self:start;
+  background:#fff; border:1px solid rgba(16,24,40,.12); border-radius:8px;
+  overflow-x:auto; overflow-y:hidden; align-self:start;
 }
-#ef-cal .ef-cal-widget iframe{width:100%;border:none;height:420px;display:block;}
+#ef-cal .ef-cal-widget iframe{width:100%;min-width:360px;border:none;height:420px;display:block;}
 @media (max-width:760px){
-  #ef-cal .ef-cal-card{grid-template-columns:1fr;border-radius:16px;padding:30px 26px;gap:26px;}
+  #ef-cal .ef-cal-shell{padding:32px 14px 48px;}
+  #ef-cal .ef-cal-card{grid-template-columns:1fr;padding:24px 16px;gap:22px;}
 }
 </style>
 </head>
