@@ -57,22 +57,24 @@ function renderPage(cal, slug) {
 #ef-cal .ef-cal-shell{max-width:900px;margin:0 auto;padding:44px 24px 64px;}
 #ef-cal .ef-cal-logo{display:block;width:220px;max-width:70%;height:auto;margin:0 auto 36px;}
 #ef-cal .ef-cal-card{
-  background:var(--panel); border:1.5px solid var(--border); border-radius:20px;
-  display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.1fr); overflow:hidden;
+  background:#fff; border:1.5px solid var(--border); border-radius:20px;
+  display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.1fr); gap:36px;
+  padding:44px 40px;
 }
-#ef-cal .ef-cal-info{padding:44px 40px;}
+#ef-cal .ef-cal-info{padding:4px 0 0;}
 #ef-cal .ef-cal-name{
   font-family:var(--font-display); font-weight:700; font-size:clamp(24px,3vw,30px);
   line-height:1.2; margin:0 0 8px;
 }
 #ef-cal .ef-cal-meta{font-size:15px;color:var(--muted);margin:0 0 22px;}
 #ef-cal .ef-cal-desc{font-size:16px;line-height:1.65;margin:0;white-space:pre-wrap;}
-#ef-cal .ef-cal-widget{border-left:1.5px solid var(--border);background:#fff;padding:18px;display:flex;}
+#ef-cal .ef-cal-widget{
+  background:#fff; border:1px solid rgba(16,24,40,.12); border-radius:12px;
+  overflow:hidden; align-self:start;
+}
 #ef-cal .ef-cal-widget iframe{width:100%;border:none;min-height:560px;display:block;}
 @media (max-width:760px){
-  #ef-cal .ef-cal-card{grid-template-columns:1fr;border-radius:16px;}
-  #ef-cal .ef-cal-info{padding:30px 26px;}
-  #ef-cal .ef-cal-widget{border-left:none;border-top:1.5px solid var(--border);padding:14px;}
+  #ef-cal .ef-cal-card{grid-template-columns:1fr;border-radius:16px;padding:30px 26px;gap:26px;}
 }
 </style>
 </head>
