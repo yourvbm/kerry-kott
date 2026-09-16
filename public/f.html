@@ -211,7 +211,11 @@
   var idleBtnText = "Submit";
   var ALIGN_TO_JUSTIFY = {left:"flex-start", center:"center", right:"flex-end"};
 
-  if(!CONFIG.FORM_KEY){
+  // In the admin's live preview (window.__EF_PREVIEW_CFG__ set), there's no
+  // real ?form= query string to read - srcdoc documents have no URL at all
+  // - but FORM_KEY is only ever used to build network URLs, which preview
+  // mode skips entirely, so it's fine to be empty there.
+  if(!CONFIG.FORM_KEY && !window.__EF_PREVIEW_CFG__){
     loadingEl.textContent = "No form specified.";
     throw new Error("missing ?form=");
   }
