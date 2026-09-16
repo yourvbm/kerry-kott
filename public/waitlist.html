@@ -13,6 +13,12 @@
 <link href="https://fonts.googleapis.com/css2?family=Sorts+Mill+Goudy:ital@0;1&family=Playfair+Display:ital,wght@0,400..700;1,400..700&family=EB+Garamond:ital@0;1&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <noscript><link href="https://fonts.googleapis.com/css2?family=Sorts+Mill+Goudy:ital@0;1&family=Playfair+Display:ital,wght@0,400..700;1,400..700&family=EB+Garamond:ital@0;1&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet"></noscript>
 <style>
+/* The resize script below reports this page's content-div height to
+   size the embedding iframe - it never accounts for the browser's
+   own default body margin, so leaving it unreset made the iframe
+   consistently ~16px short of the page's true height, showing a
+   thin (but real) scrollbar on short forms. */
+html,body{margin:0;padding:0;}
 @font-face {
   font-family: 'sunflora-hksqi6';
   font-style: normal; font-weight: 400; font-display: swap;
