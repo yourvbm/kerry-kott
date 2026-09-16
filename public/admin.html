@@ -198,8 +198,14 @@ body{
 .editor-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(360px,1fr);gap:28px;align-items:start;}
 .edit-col{min-width:0;}
 .preview-col{position:sticky;top:20px;min-width:0;}
-.preview-live-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;}
+.preview-live-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;flex-wrap:wrap;}
 .preview-live-head h2{font-family:var(--font-display);font-size:16px;margin:0;color:var(--muted);font-weight:600;}
+.preview-toggle{display:flex;gap:2px;background:var(--panel);border:1.5px solid var(--border);border-radius:999px;padding:2px;}
+.preview-toggle-btn{
+  font-size:12.5px;font-weight:600;padding:6px 14px;border-radius:999px;border:none;
+  background:none;color:var(--muted);cursor:pointer;
+}
+.preview-toggle-btn.active{background:var(--ink);color:var(--cream);}
 .preview-live-wrap{border:1.5px solid var(--border);border-radius:14px;overflow:hidden;background:#fff;position:relative;}
 .preview-live-frame{display:block;width:100%;height:calc(100vh - 140px);min-height:480px;border:none;background:#fff;}
 .preview-live-loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:13.5px;background:#fff;}
@@ -646,9 +652,21 @@ body{
      unsaved) config, via iframe.srcdoc - no separate "Preview" button, no
      Save needed first. The template's own JS reads window.__EF_PREVIEW_CFG__
      (spliced in below) instead of fetching from the network when present. */
+  var previewShowSuccess = false; // toggled by the Form/Confirmation buttons above the preview
   function buildPreviewSrcdoc(cfg, rawHtml){
     var json = JSON.stringify(cfg).replace(/<\/script/gi, "<\\/script");
-    return rawHtml.replace("<head>", "<head>\n<script>window.__EF_PREVIEW_CFG__=" + json + ";<\/script>");
+    var out = rawHtml.replace("<head>", "<head>\n<script>window.__EF_PREVIEW_CFG__=" + json + ";<\/script>");
+    if(previewShowSuccess){
+      // Runs after the page's own script has built and shown the form, so
+      // it just swaps which screen is visible - no template changes needed.
+      var jump = '<script>'
+        + '(function(){var f=document.getElementById("ef-form");if(f)f.hidden=true;'
+        + 'var p=document.querySelector(".ef-progress");if(p)p.hidden=true;'
+        + 'var s=document.getElementById("ef-success");if(s)s.hidden=false;})();'
+        + '<\/script>';
+      out = out.replace("</body>", jump + "</body>");
+    }
+    return out;
   }
   function refreshPreview(key, cfg, forceReload){
     var frame = document.getElementById("preview-live-frame");
@@ -1035,6 +1053,7 @@ body{
 
   /* ---------------- DATA LOADING ---------------- */
   function loadForm(key){
+    previewShowSuccess = false; // always land on the form view, not wherever the last form left off
     if(state.configs[key]){ renderPanel(); return; }
     state.loading[key] = true;
     renderPanel();
@@ -1162,7 +1181,12 @@ body{
       panelEl.innerHTML = '<div class="editor-grid">'
         + '<div class="edit-col">' + html + '</div>'
         + '<div class="preview-col">'
-        + '<div class="preview-live-head"><h2>Live preview</h2></div>'
+        + '<div class="preview-live-head"><h2>Live preview</h2>'
+        + '<div class="preview-toggle">'
+        + '<button type="button" class="preview-toggle-btn'+(previewShowSuccess?'':' active')+'" id="preview-show-form">Form</button>'
+        + '<button type="button" class="preview-toggle-btn'+(previewShowSuccess?' active':'')+'" id="preview-show-success">Confirmation</button>'
+        + '</div>'
+        + '</div>'
         + '<div class="preview-live-wrap">'
         + '<iframe class="preview-live-frame" id="preview-live-frame" title="Live form preview"></iframe>'
         + '<div class="preview-live-loading" id="preview-live-loading">Loading preview…</div>'
@@ -1175,7 +1199,29 @@ body{
     }
 
     wirePanelEvents(key, cfg);
-    if(entry){ refreshPreview(key, cfg, true); }
+    if(entry){
+      refreshPreview(key, cfg, true);
+      var showFormBtn = document.getElementById("preview-show-form");
+      var showSuccessBtn = document.getElementById("preview-show-success");
+      if(showFormBtn){
+        showFormBtn.addEventListener("click", function(){
+          if(!previewShowSuccess) return;
+          previewShowSuccess = false;
+          showFormBtn.classList.add("active");
+          showSuccessBtn.classList.remove("active");
+          refreshPreview(key, cfg);
+        });
+      }
+      if(showSuccessBtn){
+        showSuccessBtn.addEventListener("click", function(){
+          if(previewShowSuccess) return;
+          previewShowSuccess = true;
+          showSuccessBtn.classList.add("active");
+          showFormBtn.classList.remove("active");
+          refreshPreview(key, cfg);
+        });
+      }
+    }
 
     var styleOpenBtn = document.getElementById("style-open");
     if(styleOpenBtn){
