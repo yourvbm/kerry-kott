@@ -4,11 +4,3 @@
 # to admin.html's content while keeping the URL as "/".
 /   /admin   200
 
-# Calendar pages on schedule.kerrykott.com: /<slug> renders cal.html with
-# ?cal=<slug>. Static files always win over a _redirects rule (this project
-# has none named like a calendar slug), so /admin, /application, /intake,
-# /waitlist, /f, /embed-test and /robots.txt keep resolving to their own
-# files on every domain this project answers for. Only true 404s on
-# admin.kerrykott.com fall through to this too, showing cal.html's "doesn't
-# exist" state instead of a hard 404 — harmless, nothing links to those.
-/:slug   /cal.html?cal=:slug   200
