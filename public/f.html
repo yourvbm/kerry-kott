@@ -4,7 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Kerry Kott</title>
-<link href="https://fonts.googleapis.com/css2?family=Sorts+Mill+Goudy:ital@0;1&family=Playfair+Display:ital,wght@0,400..700;1,400..700&family=EB+Garamond:ital@0;1&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Sorts+Mill+Goudy:ital@0;1&family=Playfair+Display:ital,wght@0,400..700;1,400..700&family=EB+Garamond:ital@0;1&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&display=swap">
+<!-- Loaded non-render-blocking (media=print swapped to all onload): a
+     blocking stylesheet here would delay this page's own script from
+     running at all (any script after a pending stylesheet waits for it),
+     which delayed the very first iframe-height report enough that
+     visitors could see the embed jump/resize under them mid-scroll. -->
+<link href="https://fonts.googleapis.com/css2?family=Sorts+Mill+Goudy:ital@0;1&family=Playfair+Display:ital,wght@0,400..700;1,400..700&family=EB+Garamond:ital@0;1&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Sorts+Mill+Goudy:ital@0;1&family=Playfair+Display:ital,wght@0,400..700;1,400..700&family=EB+Garamond:ital@0;1&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet"></noscript>
 <style>
 @font-face {
   font-family: 'sunflora-hksqi6';
@@ -508,8 +515,19 @@
   // iframe already has. #ef-generic has no height of its own (it's sized
   // purely by its content), so it reports the real height to shrink/grow to.
   var el = document.getElementById("ef-generic");
+  // Skips re-posting a height we already reported - without this, a
+  // sub-pixel measurement flicker (e.g. from a focus/hover repaint) can
+  // post the same rounded height twice in a row for no visible reason,
+  // and on a slow connection the very first "loading..." height briefly
+  // showing before the real content grows in was itself being reported
+  // and applied, so the page could visibly jump under a visitor's cursor
+  // mid-scroll. This makes each real size change post exactly once.
+  var lastReportedHeight = null;
   function report(){
-    try{ window.parent.postMessage({type:"ef-resize", height: Math.ceil(el.getBoundingClientRect().height)}, "*"); }
+    var h = Math.ceil(el.getBoundingClientRect().height);
+    if(h === lastReportedHeight) return;
+    lastReportedHeight = h;
+    try{ window.parent.postMessage({type:"ef-resize", height: h}, "*"); }
     catch(e){}
   }
   window.addEventListener("load", report);
