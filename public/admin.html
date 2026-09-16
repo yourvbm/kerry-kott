@@ -803,7 +803,10 @@ body{
         + '<script>(function(){var f=document.getElementById("'+iframeId+'");if(!f)return;'
         + 'window.addEventListener("message",function(e){'
         + 'if(e.source===f.contentWindow&&e.data&&e.data.type==="ef-resize"&&typeof e.data.height==="number"){'
-        + 'f.style.height=e.data.height+"px";}});})();<\/script>';
+        // min-height is only a fallback for before the first real
+        // measurement arrives — once one does, clear it, or it permanently
+        // floors the iframe and leaves dead space under shorter content.
+        + 'f.style.minHeight="0";f.style.height=e.data.height+"px";}});})();<\/script>';
       html += '<div class="embed-box">'
         + '<div class="embed-row">'
         + '<code class="embed-code">'+esc(embedCode)+'</code>'
@@ -812,6 +815,10 @@ body{
         + '</div>'
         + '</div>';
     }
+    cfg.stages.forEach(function(stage, sIdx){
+      html += renderStage(key, cfg, stage, sIdx);
+    });
+
     cfg.success = cfg.success || { heading: "", message: "" };
     html += '<div class="confirm-card">'
       + '<h2>Confirmation Message</h2>'
@@ -822,9 +829,6 @@ body{
       + '<textarea id="success-message-input" rows="2">'+esc(cfg.success.message)+'</textarea></div>'
       + '</div>';
 
-    cfg.stages.forEach(function(stage, sIdx){
-      html += renderStage(key, cfg, stage, sIdx);
-    });
     html += '<div class="save-row">'
       + '<button type="button" class="save-btn" id="save-btn-'+key+'">Save Changes</button>'
       + '<span class="save-msg" id="save-msg-'+key+'"></span>'
