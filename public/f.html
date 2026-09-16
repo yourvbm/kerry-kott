@@ -179,8 +179,8 @@
     </form>
 
     <div class="ef-success" id="ef-success" hidden>
-      <h3 class="ef-title" style="font-size:clamp(28px,4vw,40px);">Thank you.</h3>
-      <p class="ef-intro">Your submission was received.</p>
+      <h3 class="ef-title" style="font-size:clamp(28px,4vw,40px);" id="ef-success-heading">Thank you.</h3>
+      <p class="ef-intro" id="ef-success-message">Your submission was received.</p>
     </div>
 
     <div class="ef-success" id="ef-exit" hidden>
@@ -290,8 +290,24 @@
     if(theme.fontBody) s.setProperty("--font-body", theme.fontBody);
   }
 
+  // Ties the final two words together with a non-breaking space so a lone
+  // word never wraps to its own last line.
+  function bindOrphan(s){
+    var parts = String(s||"").split(" ");
+    if(parts.length < 2) return s;
+    return parts.slice(0,-1).join(" ") + " " + parts[parts.length-1];
+  }
+  function applySuccessCopy(success){
+    if(!success) return;
+    var h = document.getElementById("ef-success-heading");
+    var m = document.getElementById("ef-success-message");
+    if(h && success.heading) h.textContent = bindOrphan(success.heading);
+    if(m && success.message) m.textContent = bindOrphan(success.message);
+  }
+
   function buildForm(cfg){
     applyTheme(cfg.theme);
+    applySuccessCopy(cfg.success);
     document.title = cfg.title || "Kerry Kott";
     var stage = cfg.stages[0];
     document.getElementById("ef-fields").innerHTML = stage.fields.map(renderField).join("");

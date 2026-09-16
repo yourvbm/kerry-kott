@@ -223,8 +223,8 @@
 
     <!-- Success -->
     <div class="ef-success" id="ef-success" hidden>
-      <h3 class="ef-step-title">Thank you, your application is received.</h3>
-      <p class="ef-intro">You will receive an email within 3 business days with next steps. We are honored you are here.</p>
+      <h3 class="ef-step-title" id="ef-success-heading">Thank you, your application is received.</h3>
+      <p class="ef-intro" id="ef-success-message">You will receive an email within 3 business days with next steps. We are honored you are here.</p>
     </div>
 
     <!-- Eligibility exit (e.g. "Are you a woman?" answered No) -->
@@ -346,8 +346,24 @@
     if(theme.fontBody) s.setProperty("--font-body", theme.fontBody);
   }
 
+  // Ties the final two words together with a non-breaking space so a lone
+  // word never wraps to its own last line.
+  function bindOrphan(s){
+    var parts = String(s||"").split(" ");
+    if(parts.length < 2) return s;
+    return parts.slice(0,-1).join(" ") + " " + parts[parts.length-1];
+  }
+  function applySuccessCopy(success){
+    if(!success) return;
+    var h = document.getElementById("ef-success-heading");
+    var m = document.getElementById("ef-success-message");
+    if(h && success.heading) h.textContent = bindOrphan(success.heading);
+    if(m && success.message) m.textContent = bindOrphan(success.message);
+  }
+
   function buildForm(cfg){
     applyTheme(cfg.theme);
+    applySuccessCopy(cfg.success);
     var startedStage  = cfg.stages.filter(function(s){ return s.id === "started"; })[0];
     var completeStage = cfg.stages.filter(function(s){ return s.id !== "started"; })[0];
     stagesById[startedStage.id] = startedStage;

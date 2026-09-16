@@ -199,11 +199,20 @@ body{
   padding:20px 22px;margin-bottom:20px;
 }
 .stage-card h2{font-family:var(--font-display);font-size:19px;margin:0 0 14px;}
+.confirm-card{
+  background:var(--panel);border:1.5px solid var(--border);border-radius:14px;
+  padding:20px 22px;margin-bottom:20px;
+}
+.confirm-card h2{font-family:var(--font-display);font-size:19px;margin:0 0 14px;}
 .stage-row{display:flex;flex-direction:column;gap:4px;margin-bottom:6px;}
 .stage-row label{font-size:12px;font-weight:600;letter-spacing:.02em;text-transform:uppercase;color:var(--muted);}
 .stage-row input[type=text]{
   font-size:15px;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;
   font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+.stage-row textarea{
+  font-size:15px;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;
+  font-family:var(--font-body);resize:vertical;line-height:1.5;
 }
 .tag-warning{font-size:12.5px;color:var(--accent);margin:2px 0 14px;}
 .stage-note{font-size:13.5px;font-style:italic;color:var(--muted);margin:0 0 18px;}
@@ -803,6 +812,16 @@ body{
         + '</div>'
         + '</div>';
     }
+    cfg.success = cfg.success || { heading: "", message: "" };
+    html += '<div class="confirm-card">'
+      + '<h2>Confirmation Message</h2>'
+      + '<p class="stage-note">What people see on the page right after they submit — keep it short, a one-line heading plus a sentence works best.</p>'
+      + '<div class="stage-row"><label>Heading</label>'
+      + '<input type="text" id="success-heading-input" value="'+esc(cfg.success.heading)+'"></div>'
+      + '<div class="stage-row"><label>Message</label>'
+      + '<textarea id="success-message-input" rows="2">'+esc(cfg.success.message)+'</textarea></div>'
+      + '</div>';
+
     cfg.stages.forEach(function(stage, sIdx){
       html += renderStage(key, cfg, stage, sIdx);
     });
@@ -1003,6 +1022,21 @@ body{
       });
     }
 
+    // Confirmation message edits
+    var successHeadingInp = document.getElementById("success-heading-input");
+    if(successHeadingInp){
+      successHeadingInp.addEventListener("input", function(){
+        cfg.success = cfg.success || {};
+        cfg.success.heading = successHeadingInp.value;
+      });
+    }
+    var successMessageInp = document.getElementById("success-message-input");
+    if(successMessageInp){
+      successMessageInp.addEventListener("input", function(){
+        cfg.success = cfg.success || {};
+        cfg.success.message = successMessageInp.value;
+      });
+    }
     // Stage tag edits
     Array.prototype.forEach.call(panelEl.querySelectorAll(".tag-input"), function(inp){
       inp.addEventListener("input", function(){

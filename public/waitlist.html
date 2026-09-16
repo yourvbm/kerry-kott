@@ -205,8 +205,8 @@
 
     <div class="ef-success" id="ef-success" hidden>
       <div class="ef-sparkle" aria-hidden="true">&#x2728;</div>
-      <h3 class="ef-step-title">You&#x2019;re on the&nbsp;list!</h3>
-      <p class="ef-intro">You will be the first to know the moment the next Earth &amp; Flesh opens. Keep an eye on your inbox, something beautiful is on the&nbsp;way. &#x1F90E;</p>
+      <h3 class="ef-step-title" id="ef-success-heading">You&#x2019;re on the&nbsp;list!</h3>
+      <p class="ef-intro" id="ef-success-message">You will be the first to know the moment the next Earth &amp; Flesh opens. Keep an eye on your inbox, something beautiful is on the&nbsp;way. &#x1F90E;</p>
     </div>
 
     <div class="ef-success" id="ef-exit" hidden>
@@ -254,6 +254,7 @@
       subBtn.textContent = idleBtnText;
       document.querySelector(".ef-nav").style.justifyContent = ALIGN_TO_JUSTIFY[stage.buttonAlign] || "center";
       applyTheme(cfg.theme);
+      applySuccessCopy(cfg.success);
       loadingEl.hidden = true;
       form.hidden = false;
     })
@@ -269,6 +270,21 @@
     if(theme.fontDisplay) s.setProperty("--font-display", theme.fontDisplay);
     if(theme.fontAccent) s.setProperty("--font-accent", theme.fontAccent);
     if(theme.fontBody) s.setProperty("--font-body", theme.fontBody);
+  }
+
+  // Ties the final two words together with a non-breaking space so a lone
+  // word never wraps to its own last line.
+  function bindOrphan(s){
+    var parts = String(s||"").split(" ");
+    if(parts.length < 2) return s;
+    return parts.slice(0,-1).join(" ") + " " + parts[parts.length-1];
+  }
+  function applySuccessCopy(success){
+    if(!success) return;
+    var h = document.getElementById("ef-success-heading");
+    var m = document.getElementById("ef-success-message");
+    if(h && success.heading) h.textContent = bindOrphan(success.heading);
+    if(m && success.message) m.textContent = bindOrphan(success.message);
   }
 
   function fail(msg){

@@ -167,8 +167,8 @@
     </form>
 
     <div class="ef-success" id="ef-success" hidden>
-      <h3 class="ef-step-title">Thank you, your intake is received.</h3>
-      <p class="ef-intro">We have everything we need for now and will be in touch with any next steps. We are honored you are here.</p>
+      <h3 class="ef-step-title" id="ef-success-heading">Thank you, your intake is received.</h3>
+      <p class="ef-intro" id="ef-success-message">We have everything we need for now and will be in touch with any next steps. We are honored you are here.</p>
     </div>
 
   </div>
@@ -262,8 +262,24 @@
     if(theme.fontBody) s.setProperty("--font-body", theme.fontBody);
   }
 
+  // Ties the final two words together with a non-breaking space so a lone
+  // word never wraps to its own last line.
+  function bindOrphan(s){
+    var parts = String(s||"").split(" ");
+    if(parts.length < 2) return s;
+    return parts.slice(0,-1).join(" ") + " " + parts[parts.length-1];
+  }
+  function applySuccessCopy(success){
+    if(!success) return;
+    var h = document.getElementById("ef-success-heading");
+    var m = document.getElementById("ef-success-message");
+    if(h && success.heading) h.textContent = bindOrphan(success.heading);
+    if(m && success.message) m.textContent = bindOrphan(success.message);
+  }
+
   function buildForm(cfg){
     applyTheme(cfg.theme);
+    applySuccessCopy(cfg.success);
     var stage = cfg.stages[0];
     document.getElementById("ef-fields").innerHTML = stage.fields.map(renderField).join("");
     idleBtnText = stage.buttonText || "Submit My Intake";
