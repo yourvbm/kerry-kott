@@ -581,6 +581,191 @@ async function handleDeleteForm(request, env, cors) {
   return json({ ok: true }, 200, cors);
 }
 
+// ---------- Mentorship (schedule.kerrykott.com/mentorship-call/<contactId>) ----------
+// One shared GHL calendar (MENTORSHIP_CALENDAR_ID) is used by every mentee.
+// Package/Sessions Allowed/Sessions Left/Booking Link are set on the contact
+// by Kerry's purchase workflow (one per package). This Worker never writes
+// Package or Sessions Allowed — only Sessions Left, on booking or manual
+// adjustment from the admin's Mentorship tab.
+
+const MENTORSHIP_CALENDAR_ID = "uY9PQylQAOc1mXKdmuST";
+
+const MENTORSHIP_FIELD_IDS = {
+  package: "8c24ZFdqWDLd5uSiA9Fh",         // Package
+  sessionsAllowed: "IRisq29ma9xrQoNbYFM7", // Sessions Allowed
+  sessionsLeft: "qY4MBCDZDzPlZmjlhca4",    // Sessions Left
+  bookingLink: "ceM8hz091LYP5Iqs5WIz",     // Booking Link
+};
+
+// Pace is informational only (shown to Kerry and the mentee) — booking is
+// never blocked for exceeding it.
+const PACKAGE_RULES = {
+  "1-Month": { period: "week", cap: 1 },
+  "3-Month": { period: "month", cap: 2 },
+  "6-Month": { period: "month", cap: 2 },
+};
+
+async function getContact(env, contactId) {
+  const res = await fetch(`${BASE}/contacts/${contactId}`, { headers: ghlHeaders(env) });
+  if (!res.ok) return null;
+  const out = await res.json();
+  return out.contact || null;
+}
+
+function cfValue(contact, fieldId) {
+  const cf = (contact.customFields || []).find((f) => f.id === fieldId);
+  return cf ? cf.value : "";
+}
+
+async function setSessionsLeft(env, contactId, value) {
+  const res = await fetch(`${BASE}/contacts/${contactId}`, {
+    method: "PUT",
+    headers: ghlHeaders(env),
+    body: JSON.stringify({
+      customFields: [{ id: MENTORSHIP_FIELD_IDS.sessionsLeft, field_value: value }],
+    }),
+  });
+  return res.ok;
+}
+
+// Mon–Sun for "week", calendar-month for "month", both in UTC.
+function currentPeriodWindow(period) {
+  const now = new Date();
+  if (period === "week") {
+    const diffToMonday = (now.getUTCDay() + 6) % 7;
+    const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - diffToMonday));
+    const end = new Date(start.getTime() + 7 * 86400000);
+    return { start, end };
+  }
+  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+  return { start, end };
+}
+
+async function countAppointmentsInWindow(env, contactId, start, end) {
+  const params = new URLSearchParams({
+    locationId: LOCATION_ID,
+    calendarId: MENTORSHIP_CALENDAR_ID,
+    contactId,
+    startTime: String(start.getTime()),
+    endTime: String(end.getTime()),
+  });
+  try {
+    const res = await fetch(`${BASE}/calendars/events?${params}`, { headers: ghlHeaders(env) });
+    if (!res.ok) return 0;
+    const out = await res.json();
+    return (out.events || []).filter((e) => e.appointmentStatus !== "cancelled").length;
+  } catch {
+    return 0;
+  }
+}
+
+function mentorshipSummary(contact) {
+  const pkg = cfValue(contact, MENTORSHIP_FIELD_IDS.package);
+  if (!pkg) return null;
+  const allowed = Number(cfValue(contact, MENTORSHIP_FIELD_IDS.sessionsAllowed)) || 0;
+  const left = Number(cfValue(contact, MENTORSHIP_FIELD_IDS.sessionsLeft)) || 0;
+  return {
+    name: [contact.firstName, contact.lastName].filter(Boolean).join(" ") || contact.contactName || "",
+    email: contact.email || "",
+    package: pkg,
+    sessionsAllowed: allowed,
+    sessionsBooked: Math.max(allowed - left, 0),
+    sessionsLeft: left,
+  };
+}
+
+// GET /mentee?id=<contactId> — public (the personalized booking page reads this)
+async function handleMenteeGet(request, env, cors) {
+  const contactId = new URL(request.url).searchParams.get("id");
+  if (!contactId) return json({ error: "Missing id" }, 400, cors);
+  const contact = await getContact(env, contactId);
+  if (!contact) return json({ error: "Not found" }, 404, cors);
+  const summary = mentorshipSummary(contact);
+  if (!summary) return json({ error: "Not found" }, 404, cors);
+
+  let pace = null;
+  const rule = PACKAGE_RULES[summary.package];
+  if (rule) {
+    const { start, end } = currentPeriodWindow(rule.period);
+    const used = await countAppointmentsInWindow(env, contactId, start, end);
+    pace = { used, cap: rule.cap, period: rule.period };
+  }
+
+  return json({ ...summary, pace }, 200, cors);
+}
+
+// GET /admin/mentees — protected (the admin's Mentorship tab)
+async function handleAdminMenteesGet(request, env, cors) {
+  if (!requireAdmin(request, env)) return json({ error: "Unauthorized" }, 401, cors);
+  const res = await fetch(`${BASE}/contacts/search`, {
+    method: "POST",
+    headers: ghlHeaders(env),
+    body: JSON.stringify({
+      locationId: LOCATION_ID,
+      pageLimit: 100,
+      filters: [{ field: `customFields.${MENTORSHIP_FIELD_IDS.package}`, operator: "exists" }],
+    }),
+  });
+  if (!res.ok) return json({ error: "Couldn't load mentees from GHL" }, 502, cors);
+  const out = await res.json();
+  const mentees = (out.contacts || [])
+    .map((c) => {
+      const summary = mentorshipSummary(c);
+      return summary && { contactId: c.id, ...summary };
+    })
+    .filter(Boolean);
+  return json(mentees, 200, cors);
+}
+
+// POST /admin/mentees/adjust {contactId, delta} — protected. Manual +1/-1 to
+// Sessions Left (comping a session, fixing a mistake), clamped to
+// [0, sessionsAllowed].
+async function handleAdminMenteeAdjust(request, env, cors) {
+  if (!requireAdmin(request, env)) return json({ error: "Unauthorized" }, 401, cors);
+  let d;
+  try { d = await request.json(); }
+  catch { return json({ error: "Bad JSON" }, 400, cors); }
+  const contactId = d.contactId;
+  const delta = Number(d.delta);
+  if (!contactId || !delta) return json({ error: "contactId and delta required" }, 400, cors);
+
+  const contact = await getContact(env, contactId);
+  const summary = contact && mentorshipSummary(contact);
+  if (!summary) return json({ error: "Not found" }, 404, cors);
+
+  const next = Math.max(0, Math.min(summary.sessionsAllowed, summary.sessionsLeft + delta));
+  const ok = await setSessionsLeft(env, contactId, next);
+  if (!ok) return json({ error: "Couldn't update GHL" }, 502, cors);
+  return json({ ok: true, sessionsLeft: next }, 200, cors);
+}
+
+// POST /webhook/session-booked {contactId} — called by Kerry's "Mentorship
+// call booked" GHL workflow (Appointment Created on the mentorship calendar).
+// Decrements Sessions Left by 1, floored at 0. Guarded by a shared secret
+// (env.MENTORSHIP_WEBHOOK_SECRET) since it's a public endpoint, unlike every
+// other handler here which is gated on Kerry's admin password.
+async function handleSessionBookedWebhook(request, env, cors) {
+  const secret = request.headers.get("X-Webhook-Secret") || "";
+  if (!env.MENTORSHIP_WEBHOOK_SECRET || !safeEqual(secret, env.MENTORSHIP_WEBHOOK_SECRET)) {
+    return json({ error: "Unauthorized" }, 401, cors);
+  }
+  let d;
+  try { d = await request.json(); }
+  catch { return json({ error: "Bad JSON" }, 400, cors); }
+  const contactId = d.contactId;
+  if (!contactId) return json({ error: "contactId required" }, 400, cors);
+
+  const contact = await getContact(env, contactId);
+  const summary = contact && mentorshipSummary(contact);
+  if (!summary) return json({ error: "Not found" }, 404, cors);
+
+  const next = Math.max(0, summary.sessionsLeft - 1);
+  const ok = await setSessionsLeft(env, contactId, next);
+  if (!ok) return json({ error: "Couldn't update GHL" }, 502, cors);
+  return json({ ok: true, sessionsLeft: next }, 200, cors);
+}
+
 // ---------- router ----------
 
 export default {
@@ -662,6 +847,26 @@ export default {
     // POST /admin/calendars — protected (saves the whole list)
     if (request.method === "POST" && path === "/admin/calendars") {
       return handleAdminCalendarsSave(request, env, cors);
+    }
+
+    // GET /mentee?id=<contactId> — public (schedule.kerrykott.com/mentorship-call/<id>)
+    if (request.method === "GET" && path === "/mentee") {
+      return handleMenteeGet(request, env, cors);
+    }
+
+    // GET /admin/mentees — protected
+    if (request.method === "GET" && path === "/admin/mentees") {
+      return handleAdminMenteesGet(request, env, cors);
+    }
+
+    // POST /admin/mentees/adjust — protected
+    if (request.method === "POST" && path === "/admin/mentees/adjust") {
+      return handleAdminMenteeAdjust(request, env, cors);
+    }
+
+    // POST /webhook/session-booked — called by the GHL "session booked" workflow
+    if (request.method === "POST" && path === "/webhook/session-booked") {
+      return handleSessionBookedWebhook(request, env, cors);
     }
 
     // ---- Legacy support: bare POST / (or POST /?form=waitlist) with no

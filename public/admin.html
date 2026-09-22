@@ -161,6 +161,12 @@ body{
 }
 .home-card-delete:hover{color:var(--accent);}
 
+.mentee-meta{font-size:13px;color:var(--muted);margin:2px 0 6px;}
+.mentee-meta strong{color:var(--ink);}
+.mentee-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.mentee-adjust-msg{font-size:12px;color:var(--muted);width:100%;text-align:right;}
+.mentee-adjust-msg.err{color:var(--accent);}
+
 .add-form-btn{
   font-size:14px;font-weight:600;padding:10px 18px;border-radius:999px;
   border:1.5px dashed var(--border);background:none;color:var(--ink);cursor:pointer;margin-top:4px;
@@ -333,6 +339,7 @@ body{
   <div class="tabs" id="section-tabs">
     <button type="button" class="tab-btn active" data-section="forms">Forms</button>
     <button type="button" class="tab-btn" data-section="calendars">Calendars</button>
+    <button type="button" class="tab-btn" data-section="mentorship">Mentorship</button>
   </div>
 
   <div class="tabs" id="tabs" hidden></div>
@@ -384,6 +391,7 @@ body{
   var CAL_ORIGIN = "https://schedule.kerrykott.com";
   var FORMS = []; // loaded from /admin/registry after login
   var CALENDARS = null; // loaded from /admin/calendars after login (null = not yet loaded)
+  var MENTEES = null; // loaded from /admin/mentees after login (null = not yet loaded)
   var previewHtml = {}; // formKey -> raw template HTML text, fetched once and reused
   var previewDebounceTimer = null;
   var calPreviewOpen = {}; // calId -> bool
@@ -710,7 +718,8 @@ body{
 
   var SECTION_SUB = {
     forms: "Edit field labels, options, tags &amp; evergreen copy — no code push needed.",
-    calendars: "Paste a GHL calendar embed link to generate a branded booking page at schedule.kerrykott.com."
+    calendars: "Paste a GHL calendar embed link to generate a branded booking page at schedule.kerrykott.com.",
+    mentorship: "Package, sessions left, and each mentee's private booking link — read live from GHL."
   };
 
   Array.prototype.forEach.call(sectionTabsEl.querySelectorAll(".tab-btn"), function(btn){
@@ -817,6 +826,18 @@ body{
       }
       if(state.activeCalendar === null){ renderCalendarsHome(); }
       else { renderCalendarPanel(); }
+      return;
+    }
+    if(state.section === "mentorship"){
+      tabsEl.hidden = true;
+      if(MENTEES === null){
+        panelEl.innerHTML = '<p class="panel-loading">Loading mentees...</p>';
+        loadMentees()
+          .then(render)
+          .catch(function(){ panelEl.innerHTML = '<p class="panel-error">Couldn\'t load mentees. Please refresh.</p>'; });
+        return;
+      }
+      renderMentorshipHome();
       return;
     }
     if(state.activeForm === null){
@@ -1049,6 +1070,77 @@ body{
       .catch(function(err){
         saveBtn.disabled = false; saveBtn.textContent = "Save Changes";
         msgEl.textContent = "Save failed: " + err.message; msgEl.className = "save-msg err";
+      });
+    });
+  }
+
+  /* ================== MENTORSHIP ================== */
+
+  function loadMentees(){
+    return fetch(WORKER_BASE + "/admin/mentees", {headers: authHeaders()})
+      .then(function(r){ if(!r.ok) throw new Error("mentees fetch failed"); return r.json(); })
+      .then(function(list){ MENTEES = list; });
+  }
+
+  function mentorshipUrl(contactId){ return CAL_ORIGIN + "/mentorship-call/" + contactId; }
+
+  function renderMentorshipHome(){
+    if(!MENTEES.length){
+      panelEl.innerHTML = '<p class="stage-note">No mentees yet. Package, Sessions Allowed, Sessions Left, and Booking Link are all set automatically when someone purchases a mentorship package — nothing to add here by hand.</p>';
+      return;
+    }
+    var html = '<div class="home-list">' + MENTEES.map(function(m){
+      var link = m.bookingLink || mentorshipUrl(m.contactId);
+      return '<div class="home-card">'
+        + '<div class="home-card-main">'
+        + '<h3>'+esc(m.name || "(no name)")+'</h3>'
+        + '<div class="mentee-meta">'+esc(m.package)+' &middot; '+m.sessionsBooked+' of '+m.sessionsAllowed+' booked &middot; <strong>'+m.sessionsLeft+' left</strong></div>'
+        + '<code class="home-card-url">'+esc(link)+'</code>'
+        + '</div>'
+        + '<div class="mentee-actions">'
+        + '<button type="button" class="icon-btn" data-adjust="-1" data-contact="'+esc(m.contactId)+'" title="Remove a session (e.g. a no-show)">&minus;</button>'
+        + '<button type="button" class="icon-btn" data-adjust="1" data-contact="'+esc(m.contactId)+'" title="Add back a session (e.g. comp one)">&plus;</button>'
+        + '<button type="button" class="copy-embed-btn" data-copy-link="'+esc(link)+'">Copy link</button>'
+        + '<span class="mentee-adjust-msg" data-msg-for="'+esc(m.contactId)+'"></span>'
+        + '</div>'
+        + '</div>';
+    }).join("") + '</div>';
+
+    panelEl.innerHTML = html;
+
+    Array.prototype.forEach.call(panelEl.querySelectorAll("[data-copy-link]"), function(btn){
+      btn.addEventListener("click", function(){
+        var link = btn.getAttribute("data-copy-link");
+        var original = btn.textContent;
+        function showCopied(){ btn.textContent = "Copied!"; setTimeout(function(){ btn.textContent = original; }, 2000); }
+        if(navigator.clipboard && navigator.clipboard.writeText){
+          navigator.clipboard.writeText(link).then(showCopied, function(){ fallbackCopy(link, showCopied); });
+        } else { fallbackCopy(link, showCopied); }
+      });
+    });
+
+    Array.prototype.forEach.call(panelEl.querySelectorAll("[data-adjust]"), function(btn){
+      btn.addEventListener("click", function(){
+        var contactId = btn.getAttribute("data-contact");
+        var delta = Number(btn.getAttribute("data-adjust"));
+        var msgEl = panelEl.querySelector('[data-msg-for="'+contactId+'"]');
+        btn.disabled = true;
+        fetch(WORKER_BASE + "/admin/mentees/adjust", {
+          method: "POST", headers: authHeaders(),
+          body: JSON.stringify({contactId: contactId, delta: delta})
+        })
+        .then(function(r){ return r.json().then(function(body){ return {ok:r.ok, body:body}; }); })
+        .then(function(res){
+          btn.disabled = false;
+          if(!res.ok){ msgEl.textContent = res.body.error || "Couldn't update."; msgEl.className = "mentee-adjust-msg err"; return; }
+          var m = MENTEES.filter(function(x){ return x.contactId === contactId; })[0];
+          if(m){
+            m.sessionsLeft = res.body.sessionsLeft;
+            m.sessionsBooked = Math.max(m.sessionsAllowed - m.sessionsLeft, 0);
+          }
+          renderMentorshipHome();
+        })
+        .catch(function(){ btn.disabled = false; msgEl.textContent = "Couldn't reach the server."; msgEl.className = "mentee-adjust-msg err"; });
       });
     });
   }
