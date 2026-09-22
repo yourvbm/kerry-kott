@@ -17,8 +17,11 @@
 // time and executes what it says.
 //
 // Secrets (set in Cloudflare, never in this file):
-//   env.GHL_PIT           — GHL Private Integration Token
-//   env.ADMIN_PASSWORD    — password for admin.html
+//   env.GHL_PIT               — GHL Private Integration Token
+//   env.MASTER_ADMIN_PASSWORD — Miriam's own cross-client fallback login
+//   env.MENTORSHIP_WEBHOOK_SECRET — shared secret for /webhook/session-booked
+// Kerry's own admin password is NOT a secret — it's a salted hash in KV
+// (see PASSWORD_KV_KEY below), self-resettable via /forgot-password.
 // Bindings:
 //   env.CONFIG             — KV namespace holding config:<formKey> docs
 
@@ -196,12 +199,12 @@ async function handleCalendarGet(request, env, cors) {
 }
 
 async function handleAdminCalendarsGet(request, env, cors) {
-  if (!requireAdmin(request, env)) return json({ error: "Unauthorized" }, 401, cors);
+  if (!(await requireAdmin(request, env))) return json({ error: "Unauthorized" }, 401, cors);
   return json(await loadCalendars(env), 200, cors);
 }
 
 async function handleAdminCalendarsSave(request, env, cors) {
-  if (!requireAdmin(request, env)) return json({ error: "Unauthorized" }, 401, cors);
+  if (!(await requireAdmin(request, env))) return json({ error: "Unauthorized" }, 401, cors);
   let d;
   try { d = await request.json(); }
   catch { return json({ error: "Bad JSON" }, 400, cors); }
@@ -256,18 +259,131 @@ function safeEqual(a, b) {
 }
 
 // Miriam's own password, the same across every client admin, checked
-// independently of Kerry's own ADMIN_PASSWORD so it keeps working no matter
-// what she sets or resets hers to. Value lives in
-// ~/Desktop/Claude/ADMIN/master-admin-password.txt.
+// independently of Kerry's own password so it keeps working no matter what
+// she sets or resets hers to. Value lives in
+// ~/Desktop/Claude/ADMIN/master-admin-password.txt. Kerry is never given
+// this one — it's Miriam's fallback, not Kerry's login.
 function isMasterPassword(candidate, env) {
   return !!env.MASTER_ADMIN_PASSWORD && safeEqual(candidate, env.MASTER_ADMIN_PASSWORD);
 }
 
-function requireAdmin(request, env) {
+/* ------------------------------------------------------------------------
+ * Kerry's own admin password. Lives ONLY as a salted hash in KV (never as a
+ * Worker secret, which is what made the last incident possible — changing
+ * it required a code deploy Miriam had to do by hand, and it silently
+ * invalidated whatever Kerry had memorized). A "Forgot password?" flow
+ * below lets her reset it herself via a one-time emailed link — the same
+ * pattern already proven on Jodi Kahn's admin (jodi-kahn/worker/worker.js).
+ * ------------------------------------------------------------------------ */
+
+const PASSWORD_KV_KEY = "admin:password_hash";
+const RESET_KV_KEY = "admin:reset_token";
+const RESET_TOKEN_TTL_MS = 30 * 60 * 1000;
+const ADMIN_RESET_EMAIL = "kerrykott@gmail.com";
+const ADMIN_ORIGIN = "https://admin.kerrykott.com";
+
+async function sha256Hex(text) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function randomToken() {
+  const bytes = crypto.getRandomValues(new Uint8Array(24));
+  return Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function passwordHash(password) {
+  return sha256Hex(LOCATION_ID + ":" + password);
+}
+
+async function checkOwnPassword(candidate, env) {
+  if (!candidate) return false;
+  const stored = await env.CONFIG.get(PASSWORD_KV_KEY);
+  if (!stored) return false;
+  return safeEqual(await passwordHash(candidate), stored);
+}
+
+async function requireAdmin(request, env) {
   const auth = request.headers.get("Authorization") || "";
   const m = /^Bearer\s+(.+)$/.exec(auth);
   const pw = m ? m[1] : "";
-  return safeEqual(pw, env.ADMIN_PASSWORD || "") || isMasterPassword(pw, env);
+  if (!pw) return false;
+  if (isMasterPassword(pw, env)) return true;
+  return checkOwnPassword(pw, env);
+}
+
+// Emails a one-time reset link through Kerry's own GHL account (the same
+// PIT this Worker already holds), sent as a normal conversation message.
+// GHL's send API is contact-based, so this upserts a small internal contact
+// for the admin's own reset address rather than emailing a bare address.
+async function sendResetEmail(env, resetUrl) {
+  const upsertRes = await fetch(`${BASE}/contacts/upsert`, {
+    method: "POST",
+    headers: ghlHeaders(env),
+    body: JSON.stringify({
+      locationId: LOCATION_ID,
+      email: ADMIN_RESET_EMAIL,
+      firstName: "Kerry Kott",
+      lastName: "(admin account)",
+      source: "admin.kerrykott.com password reset",
+    }),
+  });
+  if (!upsertRes.ok) throw new Error(`contact upsert ${upsertRes.status}`);
+  const upserted = await upsertRes.json();
+  const contactId = (upserted.contact && upserted.contact.id) || upserted.id;
+  if (!contactId) throw new Error("no contact id returned");
+
+  const html = `<div>Someone asked to reset the password for admin.kerrykott.com.</div>`
+    + `<div>Set a new one here: <a href="${resetUrl}">${resetUrl}</a></div>`
+    + `<div>This link works once and expires in 30 minutes. If this wasn't you, ignore this email — the current password stays the same.</div>`;
+
+  const sendRes = await fetch(`${BASE}/conversations/messages`, {
+    method: "POST",
+    headers: ghlHeaders(env),
+    body: JSON.stringify({ type: "Email", contactId, subject: "Reset your admin password", html }),
+  });
+  if (!sendRes.ok) throw new Error(`send ${sendRes.status}`);
+}
+
+// POST /forgot-password — public on purpose (it's how access gets recovered)
+async function handleForgotPassword(env, cors) {
+  const token = randomToken();
+  const tokenHash = await sha256Hex(token);
+  const record = JSON.stringify({ hash: tokenHash, expires: Date.now() + RESET_TOKEN_TTL_MS });
+  await env.CONFIG.put(RESET_KV_KEY, record, { expirationTtl: Math.ceil(RESET_TOKEN_TTL_MS / 1000) });
+
+  try {
+    await sendResetEmail(env, `${ADMIN_ORIGIN}/?reset=${token}`);
+  } catch (err) {
+    return json({ error: "Could not send the email." }, 502, cors);
+  }
+  return json({ ok: true, email: ADMIN_RESET_EMAIL }, 200, cors);
+}
+
+// POST /admin/reset-password — public but token-gated, not password-gated
+async function handleAdminResetPassword(request, env, cors) {
+  let d;
+  try { d = await request.json(); }
+  catch { return json({ error: "Bad JSON" }, 400, cors); }
+  const token = String(d.token || "");
+  const password = String(d.password || "");
+  if (!token) return json({ error: "Missing token" }, 400, cors);
+  if (password.length < 6) return json({ error: "Please choose a password of at least 6 characters." }, 400, cors);
+
+  const raw = await env.CONFIG.get(RESET_KV_KEY);
+  let record = null;
+  try { record = JSON.parse(raw || "null"); } catch { record = null; }
+  const expiredMsg = "That link has expired. Request a new one from the sign-in page.";
+  if (!record || !record.hash || !record.expires) return json({ error: expiredMsg }, 400, cors);
+  if (Date.now() > record.expires) return json({ error: expiredMsg }, 400, cors);
+  if ((await sha256Hex(token)) !== record.hash) {
+    return json({ error: "That link is not valid. Request a new one from the sign-in page." }, 400, cors);
+  }
+
+  await env.CONFIG.put(PASSWORD_KV_KEY, await passwordHash(password));
+  await env.CONFIG.delete(RESET_KV_KEY); // one-time use: can't replay the same email link
+
+  return json({ ok: true }, 200, cors);
 }
 
 // ---------- /submit ----------
@@ -391,7 +507,7 @@ async function handleAdminLogin(request, env, cors) {
   try { d = await request.json(); }
   catch { return json({ error: "Bad JSON" }, 400, cors); }
   const supplied = d.password || "";
-  if (safeEqual(supplied, env.ADMIN_PASSWORD || "") || isMasterPassword(supplied, env)) {
+  if (isMasterPassword(supplied, env) || (await checkOwnPassword(supplied, env))) {
     return json({ ok: true }, 200, cors);
   }
   return json({ error: "Wrong password" }, 401, cors);
@@ -400,7 +516,7 @@ async function handleAdminLogin(request, env, cors) {
 // ---------- /admin/config (GET) ----------
 
 async function handleAdminConfigGet(request, env, cors, formKey) {
-  if (!requireAdmin(request, env)) return json({ error: "Unauthorized" }, 401, cors);
+  if (!(await requireAdmin(request, env))) return json({ error: "Unauthorized" }, 401, cors);
   return handleConfigGet(env, cors, formKey);
 }
 
@@ -422,7 +538,7 @@ async function createCustomField(env, folderId, name, dataType) {
 }
 
 async function handleAdminConfigSave(request, env, cors) {
-  if (!requireAdmin(request, env)) return json({ error: "Unauthorized" }, 401, cors);
+  if (!(await requireAdmin(request, env))) return json({ error: "Unauthorized" }, 401, cors);
 
   let d;
   try { d = await request.json(); }
@@ -467,7 +583,7 @@ async function handleAdminConfigSave(request, env, cors) {
 // to one already in use elsewhere, instead of always creating a new field.
 
 async function handleAdminGhlFields(request, env, cors) {
-  if (!requireAdmin(request, env)) return json({ error: "Unauthorized" }, 401, cors);
+  if (!(await requireAdmin(request, env))) return json({ error: "Unauthorized" }, 401, cors);
 
   const res = await fetch(`${BASE}/locations/${LOCATION_ID}/customFields`, {
     headers: ghlHeaders(env),
@@ -493,12 +609,12 @@ async function handleAdminGhlFields(request, env, cors) {
 // ---------- /admin/registry ----------
 
 async function handleRegistryGet(request, env, cors) {
-  if (!requireAdmin(request, env)) return json({ error: "Unauthorized" }, 401, cors);
+  if (!(await requireAdmin(request, env))) return json({ error: "Unauthorized" }, 401, cors);
   return json(await loadRegistry(env), 200, cors);
 }
 
 async function handleRegistrySave(request, env, cors) {
-  if (!requireAdmin(request, env)) return json({ error: "Unauthorized" }, 401, cors);
+  if (!(await requireAdmin(request, env))) return json({ error: "Unauthorized" }, 401, cors);
   let d;
   try { d = await request.json(); }
   catch { return json({ error: "Bad JSON" }, 400, cors); }
@@ -510,7 +626,7 @@ async function handleRegistrySave(request, env, cors) {
 // ---------- /admin/duplicate-form ----------
 
 async function handleDuplicateForm(request, env, cors) {
-  if (!requireAdmin(request, env)) return json({ error: "Unauthorized" }, 401, cors);
+  if (!(await requireAdmin(request, env))) return json({ error: "Unauthorized" }, 401, cors);
   let d;
   try { d = await request.json(); }
   catch { return json({ error: "Bad JSON" }, 400, cors); }
@@ -563,7 +679,7 @@ async function handleDuplicateForm(request, env, cors) {
 // ---------- /admin/delete-form ----------
 
 async function handleDeleteForm(request, env, cors) {
-  if (!requireAdmin(request, env)) return json({ error: "Unauthorized" }, 401, cors);
+  if (!(await requireAdmin(request, env))) return json({ error: "Unauthorized" }, 401, cors);
   let d;
   try { d = await request.json(); }
   catch { return json({ error: "Bad JSON" }, 400, cors); }
@@ -642,7 +758,7 @@ function currentPeriodWindow(period) {
   return { start, end };
 }
 
-async function countAppointmentsInWindow(env, contactId, start, end) {
+async function fetchAppointments(env, contactId, start, end) {
   const params = new URLSearchParams({
     locationId: LOCATION_ID,
     calendarId: MENTORSHIP_CALENDAR_ID,
@@ -652,12 +768,30 @@ async function countAppointmentsInWindow(env, contactId, start, end) {
   });
   try {
     const res = await fetch(`${BASE}/calendars/events?${params}`, { headers: ghlHeaders(env) });
-    if (!res.ok) return 0;
+    if (!res.ok) return [];
     const out = await res.json();
-    return (out.events || []).filter((e) => e.appointmentStatus !== "cancelled").length;
+    return (out.events || []).filter((e) => e.appointmentStatus !== "cancelled");
   } catch {
-    return 0;
+    return [];
   }
+}
+
+async function countAppointmentsInWindow(env, contactId, start, end) {
+  return (await fetchAppointments(env, contactId, start, end)).length;
+}
+
+// All-time appointment history for a mentee (no window) — the ground truth
+// for "how many has this person actually booked", since Sessions Left
+// floors at 0 and stops reflecting reality once someone books past their
+// allotment.
+const EPOCH_START = new Date(0);
+const FAR_FUTURE = new Date(Date.now() + 10 * 365 * 86400000);
+async function listAllAppointments(env, contactId) {
+  const events = await fetchAppointments(env, contactId, EPOCH_START, FAR_FUTURE);
+  return events
+    .map((e) => e.startTime)
+    .filter(Boolean)
+    .sort();
 }
 
 function mentorshipSummary(contact) {
@@ -697,7 +831,7 @@ async function handleMenteeGet(request, env, cors) {
 
 // GET /admin/mentees — protected (the admin's Mentorship tab)
 async function handleAdminMenteesGet(request, env, cors) {
-  if (!requireAdmin(request, env)) return json({ error: "Unauthorized" }, 401, cors);
+  if (!(await requireAdmin(request, env))) return json({ error: "Unauthorized" }, 401, cors);
   const res = await fetch(`${BASE}/contacts/search`, {
     method: "POST",
     headers: ghlHeaders(env),
@@ -709,12 +843,32 @@ async function handleAdminMenteesGet(request, env, cors) {
   });
   if (!res.ok) return json({ error: "Couldn't load mentees from GHL" }, 502, cors);
   const out = await res.json();
-  const mentees = (out.contacts || [])
+  const base = (out.contacts || [])
     .map((c) => {
       const summary = mentorshipSummary(c);
       return summary && { contactId: c.id, ...summary };
     })
     .filter(Boolean);
+
+  const mentees = await Promise.all(base.map(async (m) => {
+    const sessions = await listAllAppointments(env, m.contactId);
+    const rule = PACKAGE_RULES[m.package];
+    let pace = null;
+    if (rule) {
+      const { start, end } = currentPeriodWindow(rule.period);
+      const used = await countAppointmentsInWindow(env, m.contactId, start, end);
+      pace = { used, cap: rule.cap, period: rule.period };
+    }
+    return {
+      ...m,
+      sessions,
+      sessionsBooked: sessions.length, // ground truth — the field's derived value floors at sessionsAllowed
+      overAllotment: sessions.length > m.sessionsAllowed,
+      pace,
+      overPace: !!(pace && pace.used > pace.cap),
+    };
+  }));
+
   return json(mentees, 200, cors);
 }
 
@@ -722,7 +876,7 @@ async function handleAdminMenteesGet(request, env, cors) {
 // Sessions Left (comping a session, fixing a mistake), clamped to
 // [0, sessionsAllowed].
 async function handleAdminMenteeAdjust(request, env, cors) {
-  if (!requireAdmin(request, env)) return json({ error: "Unauthorized" }, 401, cors);
+  if (!(await requireAdmin(request, env))) return json({ error: "Unauthorized" }, 401, cors);
   let d;
   try { d = await request.json(); }
   catch { return json({ error: "Bad JSON" }, 400, cors); }
@@ -795,6 +949,16 @@ export default {
     // POST /admin/login
     if (request.method === "POST" && path === "/admin/login") {
       return handleAdminLogin(request, env, cors);
+    }
+
+    // POST /forgot-password — public (how Kerry recovers access herself)
+    if (request.method === "POST" && path === "/forgot-password") {
+      return handleForgotPassword(env, cors);
+    }
+
+    // POST /admin/reset-password — public but token-gated, not password-gated
+    if (request.method === "POST" && path === "/admin/reset-password") {
+      return handleAdminResetPassword(request, env, cors);
     }
 
     // GET /admin/config?form=<key> — protected
