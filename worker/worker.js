@@ -172,55 +172,6 @@ async function saveCalendars(env, calendars) {
   await env.CONFIG.put("calendars", JSON.stringify(calendars));
 }
 
-// ---------- Newsletters ----------
-// One KV blob holding every newsletter Kerry has drafted. Each entry:
-//   { id, label, subject, html }
-// No GHL side effects here — Kerry copies the finished HTML into GHL's own
-// Emails -> Code Editor to actually pick a Smart List or tag and send, so
-// this is a single wholesale get/save, same shape as calendars.
-
-async function loadNewsletters(env) {
-  const raw = await env.CONFIG.get("newsletters");
-  if (!raw) return [];
-  try { return JSON.parse(raw); } catch { return []; }
-}
-
-async function saveNewsletters(env, newsletters) {
-  await env.CONFIG.put("newsletters", JSON.stringify(newsletters));
-}
-
-function genNewsletterId() {
-  return "nl_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
-}
-
-async function handleAdminNewslettersGet(request, env, cors) {
-  if (!requireAdmin(request, env)) return json({ error: "Unauthorized" }, 401, cors);
-  return json(await loadNewsletters(env), 200, cors);
-}
-
-async function handleAdminNewslettersSave(request, env, cors) {
-  if (!requireAdmin(request, env)) return json({ error: "Unauthorized" }, 401, cors);
-  let d;
-  try { d = await request.json(); }
-  catch { return json({ error: "Bad JSON" }, 400, cors); }
-  if (!Array.isArray(d)) return json({ error: "Newsletters must be an array" }, 400, cors);
-
-  const out = [];
-  for (const n of d) {
-    const label = String(n.label || "").trim();
-    if (!label) return json({ error: "Every newsletter needs a name." }, 400, cors);
-    out.push({
-      id: n.id || genNewsletterId(),
-      label,
-      subject: String(n.subject || ""),
-      html: String(n.html || ""),
-    });
-  }
-
-  await saveNewsletters(env, out);
-  return json(out, 200, cors);
-}
-
 const SLUG_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
 // Kerry may paste GHL's whole <iframe> embed snippet instead of the bare
@@ -711,16 +662,6 @@ export default {
     // POST /admin/calendars — protected (saves the whole list)
     if (request.method === "POST" && path === "/admin/calendars") {
       return handleAdminCalendarsSave(request, env, cors);
-    }
-
-    // GET /admin/newsletters — protected
-    if (request.method === "GET" && path === "/admin/newsletters") {
-      return handleAdminNewslettersGet(request, env, cors);
-    }
-
-    // POST /admin/newsletters — protected (saves the whole list)
-    if (request.method === "POST" && path === "/admin/newsletters") {
-      return handleAdminNewslettersSave(request, env, cors);
     }
 
     // ---- Legacy support: bare POST / (or POST /?form=waitlist) with no
