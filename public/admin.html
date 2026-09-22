@@ -194,7 +194,7 @@ body{
 /* Live side-by-side editor: left = fields, right = a real render of the
    form (via iframe.srcdoc), rebuilt from the in-memory config on every
    edit - no Save needed to see it. */
-#admin-app.is-editing-form{max-width:1440px;}
+#admin-app.is-editing-form, #admin-app.is-editing-newsletter{max-width:1440px;}
 .editor-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(360px,1fr);gap:28px;align-items:start;}
 .edit-col{min-width:0;}
 .preview-col{position:sticky;top:20px;min-width:0;}
@@ -210,10 +210,16 @@ body{
 .preview-live-frame{display:block;width:100%;height:calc(100vh - 140px);min-height:480px;border:none;background:#fff;}
 .preview-live-loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:13.5px;background:#fff;}
 @media (max-width:980px){
-  #admin-app.is-editing-form{max-width:920px;}
+  #admin-app.is-editing-form, #admin-app.is-editing-newsletter{max-width:920px;}
   .editor-grid{grid-template-columns:minmax(0,1fr);}
   .preview-col{position:static;}
   .preview-live-frame{height:640px;}
+}
+
+.html-editor{
+  width:100%;min-height:460px;font-size:13px;line-height:1.5;padding:12px 14px;
+  border:1.5px solid var(--border);border-radius:8px;background:#fff;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;resize:vertical;
 }
 
 .stage-card{
@@ -333,6 +339,7 @@ body{
   <div class="tabs" id="section-tabs">
     <button type="button" class="tab-btn active" data-section="forms">Forms</button>
     <button type="button" class="tab-btn" data-section="calendars">Calendars</button>
+    <button type="button" class="tab-btn" data-section="newsletters">Newsletters</button>
   </div>
 
   <div class="tabs" id="tabs" hidden></div>
@@ -384,6 +391,7 @@ body{
   var CAL_ORIGIN = "https://schedule.kerrykott.com";
   var FORMS = []; // loaded from /admin/registry after login
   var CALENDARS = null; // loaded from /admin/calendars after login (null = not yet loaded)
+  var NEWSLETTERS = null; // loaded from /admin/newsletters after login (null = not yet loaded)
   var previewHtml = {}; // formKey -> raw template HTML text, fetched once and reused
   var previewDebounceTimer = null;
   var calPreviewOpen = {}; // calId -> bool
@@ -638,8 +646,54 @@ body{
     };
   }
 
+  /* ---------------- DELETE NEWSLETTER ---------------- */
+  function openDeleteNewsletterModal(nlKey, label){
+    document.getElementById("delete-title").textContent = "⚠️ Delete this newsletter?";
+    document.getElementById("delete-confirm-label-text").textContent = "the newsletter's";
+    document.getElementById("delete-warning").textContent =
+      'This permanently deletes "'+label+'" and its HTML draft. This cannot be undone.';
+    document.getElementById("delete-confirm-name").textContent = label;
+    var input = document.getElementById("delete-confirm-input");
+    var btn = document.getElementById("delete-confirm-btn");
+    input.value = "";
+    btn.disabled = true;
+    document.getElementById("delete-msg").textContent = "";
+    document.getElementById("delete-modal").hidden = false;
+
+    input.oninput = function(){ btn.disabled = (input.value !== label); };
+
+    btn.onclick = function(){
+      var msgEl = document.getElementById("delete-msg");
+      var nl = newsletterByKey(nlKey);
+      var next = NEWSLETTERS.filter(function(n){ return newsletterKey(n) !== nlKey; });
+
+      // Never-saved newsletter: nothing on the server to delete yet.
+      if(!nl || !nl.id){
+        document.getElementById("delete-modal").hidden = true;
+        NEWSLETTERS = next;
+        state.activeNewsletter = null;
+        render();
+        return;
+      }
+
+      btn.disabled = true; msgEl.textContent = "Deleting...";
+      fetch(WORKER_BASE + "/admin/newsletters", {
+        method: "POST", headers: authHeaders(), body: JSON.stringify(next)
+      })
+      .then(function(r){ return r.json().then(function(body){ return {ok:r.ok, body:body}; }); })
+      .then(function(res){
+        if(!res.ok){ btn.disabled = false; msgEl.textContent = res.body.error || "Couldn't delete. Try again."; return; }
+        document.getElementById("delete-modal").hidden = true;
+        NEWSLETTERS = res.body;
+        state.activeNewsletter = null;
+        render();
+      })
+      .catch(function(){ btn.disabled = false; msgEl.textContent = "Couldn't delete. Try again."; });
+    };
+  }
+
   var pw = null;
-  var state = {section: "forms", activeForm: null, configs: {}, saveMsg: {}, loading: {}, activeCalendar: null, calSaveMsg: ""};
+  var state = {section: "forms", activeForm: null, configs: {}, saveMsg: {}, loading: {}, activeCalendar: null, calSaveMsg: "", activeNewsletter: null};
 
   var loginEl = document.getElementById("admin-login");
   var appEl   = document.getElementById("admin-app");
@@ -710,7 +764,8 @@ body{
 
   var SECTION_SUB = {
     forms: "Edit field labels, options, tags &amp; evergreen copy — no code push needed.",
-    calendars: "Paste a GHL calendar embed link to generate a branded booking page at schedule.kerrykott.com."
+    calendars: "Paste a GHL calendar embed link to generate a branded booking page at schedule.kerrykott.com.",
+    newsletters: "Write and edit newsletter HTML here, then copy it into GHL's Emails &rarr; Code Editor to pick a Smart List or tag and send."
   };
 
   Array.prototype.forEach.call(sectionTabsEl.querySelectorAll(".tab-btn"), function(btn){
@@ -794,6 +849,12 @@ body{
       .then(function(cals){ CALENDARS = cals; });
   }
 
+  function loadNewsletters(){
+    return fetch(WORKER_BASE + "/admin/newsletters", {headers: authHeaders()})
+      .then(function(r){ if(!r.ok) throw new Error("newsletters fetch failed"); return r.json(); })
+      .then(function(nls){ NEWSLETTERS = nls; });
+  }
+
   function showApp(){
     loginEl.hidden = true;
     appEl.hidden = false;
@@ -805,6 +866,9 @@ body{
   function render(){
     if(state.section !== "forms" || state.activeForm === null){
       appEl.classList.remove("is-editing-form");
+    }
+    if(state.section !== "newsletters" || state.activeNewsletter === null){
+      appEl.classList.remove("is-editing-newsletter");
     }
     if(state.section === "calendars"){
       tabsEl.hidden = true;
@@ -819,6 +883,19 @@ body{
       else { renderCalendarPanel(); }
       return;
     }
+    if(state.section === "newsletters"){
+      tabsEl.hidden = true;
+      if(NEWSLETTERS === null){
+        panelEl.innerHTML = '<p class="panel-loading">Loading newsletters...</p>';
+        loadNewsletters()
+          .then(render)
+          .catch(function(){ panelEl.innerHTML = '<p class="panel-error">Couldn\'t load the newsletter list. Please refresh.</p>'; });
+        return;
+      }
+      if(state.activeNewsletter === null){ renderNewslettersHome(); }
+      else { renderNewsletterPanel(); }
+      return;
+    }
     if(state.activeForm === null){
       tabsEl.hidden = true;
       renderHome();
@@ -831,6 +908,7 @@ body{
 
   function goHome(){
     if(state.section === "calendars"){ state.activeCalendar = null; }
+    else if(state.section === "newsletters"){ state.activeNewsletter = null; }
     else { state.activeForm = null; }
     render();
   }
@@ -1043,6 +1121,153 @@ body{
         CALENDARS = res.body;
         var saved = CALENDARS.filter(function(c){ return c.slug === cal.slug; })[0];
         state.activeCalendar = saved ? calendarKey(saved) : null;
+        msgEl.textContent = "Saved.";
+        render();
+      })
+      .catch(function(err){
+        saveBtn.disabled = false; saveBtn.textContent = "Save Changes";
+        msgEl.textContent = "Save failed: " + err.message; msgEl.className = "save-msg err";
+      });
+    });
+  }
+
+  /* ================== NEWSLETTERS ================== */
+  // No GHL side effects here on purpose: Kerry writes/edits the HTML in her
+  // own admin (with a live preview, same as forms), then copies it out and
+  // pastes it into GHL's own Emails -> Code Editor to actually choose a
+  // Smart List or tag and send. GHL already handles that targeting plus
+  // unsubscribe/compliance correctly; this tool doesn't try to re-do it.
+
+  // A newsletter has no server id until its first save, so identify it in
+  // the UI by id once it exists, or by the client-only _tempId before that
+  // (same pattern as calendars).
+  function newsletterKey(n){ return n.id || n._tempId; }
+  function newsletterByKey(key){ return (NEWSLETTERS||[]).filter(function(n){ return newsletterKey(n)===key; })[0]; }
+
+  function renderNewslettersHome(){
+    var html = '<div class="home-list">' + NEWSLETTERS.map(function(n){
+      var key = newsletterKey(n);
+      return '<div class="home-card">'
+        + '<div class="home-card-main"><h3>'+esc(n.label || "(untitled)")+'</h3>'
+        + '<code class="home-card-url">'+esc(n.subject || "(no subject yet)")+'</code><br>'
+        + '<button type="button" class="home-card-delete" data-nl="'+esc(key)+'" data-label="'+esc(n.label || "(untitled)")+'">Delete this newsletter</button>'
+        + '</div>'
+        + '<button type="button" class="home-card-btn" data-nl="'+esc(key)+'">Edit →</button>'
+        + '</div>';
+    }).join("") + '</div>';
+
+    if(!NEWSLETTERS.length){
+      html = '<p class="stage-note">No newsletters yet. Add one below, paste in the HTML, then copy it into GHL\'s Emails &rarr; Code Editor when you\'re ready to send.</p>' + html;
+    }
+
+    html += '<button type="button" class="add-form-btn" id="add-nl-toggle">+ Add Newsletter</button>';
+
+    panelEl.innerHTML = html;
+    Array.prototype.forEach.call(panelEl.querySelectorAll(".home-card-btn"), function(btn){
+      btn.addEventListener("click", function(){
+        state.activeNewsletter = btn.getAttribute("data-nl");
+        render();
+      });
+    });
+    Array.prototype.forEach.call(panelEl.querySelectorAll(".home-card-delete"), function(btn){
+      btn.addEventListener("click", function(){
+        openDeleteNewsletterModal(btn.getAttribute("data-nl"), btn.getAttribute("data-label"));
+      });
+    });
+
+    document.getElementById("add-nl-toggle").addEventListener("click", function(){
+      var tempId = "new_" + Date.now().toString(36);
+      NEWSLETTERS.push({id: null, _tempId: tempId, label: "New Newsletter", subject: "", html: "<!doctype html>\n<html>\n<body>\n\n</body>\n</html>"});
+      state.activeNewsletter = tempId;
+      render();
+    });
+  }
+
+  function renderNewsletterPanel(){
+    var key = state.activeNewsletter;
+    var nl = newsletterByKey(key);
+    if(!nl){ state.activeNewsletter = null; renderNewslettersHome(); return; }
+
+    var left = '<div class="rename-row"><label class="mini">Newsletter name (internal only — never shown to recipients)</label>'
+      + '<div class="rename-inputs"><input type="text" id="nl-label" value="'+esc(nl.label||"")+'"></div></div>';
+
+    left += '<div class="stage-row"><label>Subject line</label>'
+      + '<input type="text" id="nl-subject" value="'+esc(nl.subject||"")+'" placeholder="e.g. This month at Kerry Kott"></div>';
+
+    left += '<div class="stage-row"><label>HTML</label>'
+      + '<textarea id="nl-html" class="html-editor" spellcheck="false">'+esc(nl.html||"")+'</textarea></div>';
+
+    left += '<div class="embed-box"><div class="embed-row">'
+      + '<span class="add-form-hint" style="margin:0;flex:1 1 220px;">When it\'s ready: in GHL go to Marketing &rarr; Emails &rarr; New &rarr; Code Editor, paste this in, then choose a Smart List or tag and send from there.</span>'
+      + '<button type="button" class="copy-embed-btn" id="nl-copy-btn">Copy HTML</button>'
+      + '<span class="copy-msg" id="nl-copy-msg"></span>'
+      + '</div></div>';
+
+    left += '<div class="save-row">'
+      + '<button type="button" class="save-btn" id="nl-save-btn">Save Changes</button>'
+      + '<span class="save-msg" id="nl-save-msg"></span>'
+      + '</div>';
+
+    left += '<div class="danger-zone">'
+      + '<button type="button" class="danger-zone-btn" id="nl-danger-delete" data-nl="'+esc(key)+'" data-label="'+esc(nl.label||"(untitled)")+'">Delete this newsletter</button>'
+      + '</div>';
+
+    appEl.classList.add("is-editing-newsletter");
+    panelEl.innerHTML = '<div class="editor-grid">'
+      + '<div class="edit-col">' + left + '</div>'
+      + '<div class="preview-col">'
+      + '<div class="preview-live-head"><h2>Live preview</h2></div>'
+      + '<div class="preview-live-wrap"><iframe class="preview-live-frame" id="nl-preview-frame" title="Newsletter preview"></iframe></div>'
+      + '</div>'
+      + '</div>';
+
+    document.getElementById("nl-preview-frame").srcdoc = nl.html || "";
+
+    document.getElementById("nl-label").addEventListener("input", function(e){ nl.label = e.target.value; });
+    document.getElementById("nl-subject").addEventListener("input", function(e){ nl.subject = e.target.value; });
+
+    var nlPreviewTimer = null;
+    document.getElementById("nl-html").addEventListener("input", function(e){
+      nl.html = e.target.value;
+      clearTimeout(nlPreviewTimer);
+      nlPreviewTimer = setTimeout(function(){
+        var frame = document.getElementById("nl-preview-frame");
+        if(frame) frame.srcdoc = nl.html;
+      }, 400);
+    });
+
+    document.getElementById("nl-copy-btn").addEventListener("click", function(){
+      var msgEl = document.getElementById("nl-copy-msg");
+      var code = nl.html || "";
+      function showCopied(){ msgEl.textContent = "Copied!"; setTimeout(function(){ if(msgEl) msgEl.textContent = ""; }, 2000); }
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(code).then(showCopied, function(){ fallbackCopy(code, showCopied); });
+      } else { fallbackCopy(code, showCopied); }
+    });
+
+    document.getElementById("nl-danger-delete").addEventListener("click", function(){
+      openDeleteNewsletterModal(key, nl.label || "(untitled)");
+    });
+
+    document.getElementById("nl-save-btn").addEventListener("click", function(){
+      var saveBtn = document.getElementById("nl-save-btn");
+      var msgEl = document.getElementById("nl-save-msg");
+      var label = (document.getElementById("nl-label").value||"").trim();
+      if(!label){ msgEl.textContent = "Give it a name first."; msgEl.className = "save-msg err"; return; }
+      nl.label = label;
+
+      var activeIndex = NEWSLETTERS.indexOf(nl);
+      saveBtn.disabled = true; saveBtn.textContent = "Saving..."; msgEl.textContent = ""; msgEl.className = "save-msg";
+      fetch(WORKER_BASE + "/admin/newsletters", {
+        method: "POST", headers: authHeaders(), body: JSON.stringify(NEWSLETTERS)
+      })
+      .then(function(r){ return r.json().then(function(body){ return {ok:r.ok, body:body}; }); })
+      .then(function(res){
+        saveBtn.disabled = false; saveBtn.textContent = "Save Changes";
+        if(!res.ok){ msgEl.textContent = "Save failed: " + (res.body && res.body.error || "unknown error"); msgEl.className = "save-msg err"; return; }
+        NEWSLETTERS = res.body;
+        var saved = NEWSLETTERS[activeIndex];
+        state.activeNewsletter = saved ? newsletterKey(saved) : null;
         msgEl.textContent = "Saved.";
         render();
       })
