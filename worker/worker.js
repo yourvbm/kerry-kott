@@ -52,6 +52,15 @@ const TYPE_TO_DATATYPE = {
   select: "TEXT",
 };
 
+// Reverse of the above, for offering existing GHL fields to attach to a
+// form. Only TEXT/LARGE_TEXT are listed as candidates (the only dataTypes
+// this tool ever creates) — other GHL dataTypes (SINGLE_OPTIONS, DATE,
+// FILE_UPLOAD, etc.) don't have a form-field equivalent here.
+const DATATYPE_TO_TYPE = {
+  TEXT: "text",
+  LARGE_TEXT: "textarea",
+};
+
 const ALLOWED_ORIGINS = [
   "https://kerrykott.com",
   "https://www.kerrykott.com",
@@ -453,6 +462,34 @@ async function handleAdminConfigSave(request, env, cors) {
   return json(cfg, 200, cors);
 }
 
+// ---------- /admin/ghl-fields (GET) ----------
+// Lists existing GHL custom fields so the admin can attach a form question
+// to one already in use elsewhere, instead of always creating a new field.
+
+async function handleAdminGhlFields(request, env, cors) {
+  if (!requireAdmin(request, env)) return json({ error: "Unauthorized" }, 401, cors);
+
+  const res = await fetch(`${BASE}/locations/${LOCATION_ID}/customFields`, {
+    headers: ghlHeaders(env),
+  });
+  if (!res.ok) {
+    const detail = await res.text();
+    return json({ error: "Couldn't load GHL fields", detail }, 502, cors);
+  }
+  const out = await res.json();
+  const fields = (out.customFields || [])
+    .filter((f) => DATATYPE_TO_TYPE[f.dataType])
+    .map((f) => ({
+      id: f.id,
+      fieldKey: f.fieldKey,
+      name: f.name,
+      dataType: f.dataType,
+      type: DATATYPE_TO_TYPE[f.dataType],
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  return json(fields, 200, cors);
+}
+
 // ---------- /admin/registry ----------
 
 async function handleRegistryGet(request, env, cors) {
@@ -585,6 +622,11 @@ export default {
     // POST /admin/config — protected
     if (request.method === "POST" && path === "/admin/config") {
       return handleAdminConfigSave(request, env, cors);
+    }
+
+    // GET /admin/ghl-fields — protected
+    if (request.method === "GET" && path === "/admin/ghl-fields") {
+      return handleAdminGhlFields(request, env, cors);
     }
 
     // GET /admin/registry — protected

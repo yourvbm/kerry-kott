@@ -387,6 +387,10 @@ body{
   var previewHtml = {}; // formKey -> raw template HTML text, fetched once and reused
   var previewDebounceTimer = null;
   var calPreviewOpen = {}; // calId -> bool
+  var ghlFieldsCache = null; // [{id,fieldKey,name,dataType,type}] from /admin/ghl-fields, fetched once and reused
+  var ghlFieldsLoading = false;
+  var ghlFieldsLoadError = null;
+  var existingFieldPicker = {}; // "formKey:stageIdx" -> {open:true} while that stage's picker is expanded
 
   function entryFor(key){ return FORMS.filter(function(f){ return f.key===key; })[0]; }
   function embedUrl(entry){
@@ -1294,7 +1298,14 @@ body{
       html += renderField(formKey, stage, field, sIdx, fIdx);
     });
     html += '</div>';
-    html += '<button type="button" class="add-field-btn" data-add-field-stage="'+sIdx+'">+ Add field</button>';
+    var pickerKey = formKey + ":" + sIdx;
+    var picker = existingFieldPicker[pickerKey];
+    html += '<div style="display:flex;gap:10px;flex-wrap:wrap;">'
+      + '<button type="button" class="add-field-btn" data-add-field-stage="'+sIdx+'">+ Add field</button>'
+      + '<button type="button" class="add-field-btn" data-existing-field-stage="'+sIdx+'">'
+        + (picker && picker.open ? "Cancel" : "+ Choose existing field") + '</button>'
+      + '</div>';
+    if(picker && picker.open){ html += renderExistingFieldPicker(cfg, pickerKey); }
     if(formKey !== "application"){
       // Placed last, matching where the button actually sits on the live
       // form: after every field.
@@ -1381,6 +1392,66 @@ body{
         + '</div>';
     });
     html += '<button type="button" class="add-option-btn">+ Add option</button>';
+    html += '</div>';
+    return html;
+  }
+
+  /* ---------------- CHOOSE EXISTING GHL FIELD ---------------- */
+  function usedGhlKeys(cfg){
+    var used = {};
+    (cfg.stages||[]).forEach(function(s){
+      (s.fields||[]).forEach(function(f){ if(f.ghlKey) used[f.ghlKey] = true; });
+    });
+    return used;
+  }
+
+  function ensureGhlFieldsLoaded(cb){
+    if(ghlFieldsCache !== null){ cb(); return; }
+    if(ghlFieldsLoading){ return; }
+    ghlFieldsLoading = true;
+    fetch(WORKER_BASE + "/admin/ghl-fields", {headers: authHeaders()})
+      .then(function(r){ return r.json().then(function(body){ return {ok:r.ok, body:body}; }); })
+      .then(function(res){
+        ghlFieldsLoading = false;
+        if(!res.ok){
+          ghlFieldsCache = [];
+          ghlFieldsLoadError = (res.body && res.body.error) || "Couldn't load GHL fields.";
+        } else {
+          ghlFieldsCache = res.body;
+          ghlFieldsLoadError = null;
+        }
+        cb();
+      })
+      .catch(function(){
+        ghlFieldsLoading = false;
+        ghlFieldsCache = [];
+        ghlFieldsLoadError = "Couldn't reach the server.";
+        cb();
+      });
+  }
+
+  function renderExistingFieldPicker(cfg, pickerKey){
+    var html = '<div class="add-form-box">';
+    if(ghlFieldsCache === null){
+      html += '<p class="add-form-hint">Loading GHL fields…</p>';
+    } else if(ghlFieldsLoadError){
+      html += '<p class="panel-error">'+esc(ghlFieldsLoadError)+'</p>';
+    } else {
+      var used = usedGhlKeys(cfg);
+      var available = ghlFieldsCache.filter(function(f){ return !used[f.fieldKey]; });
+      if(!available.length){
+        html += '<p class="add-form-hint">No other GHL fields available to attach — every existing text field is already used somewhere on this form.</p>';
+      } else {
+        html += '<div class="stage-row"><label>Existing GHL field</label>'
+          + '<select data-existing-field-select="'+esc(pickerKey)+'">'
+          + available.map(function(f){
+              return '<option value="'+esc(f.fieldKey)+'">'+esc(f.name)+' ('+esc(f.dataType)+')</option>';
+            }).join("")
+          + '</select></div>'
+          + '<p class="add-form-hint">Adds this question using the field GHL already has — nothing new gets created, and whatever&rsquo;s already stored under it stays put.</p>'
+          + '<div class="save-row"><button type="button" class="save-btn" data-existing-field-add="'+esc(pickerKey)+'">Add field</button></div>';
+      }
+    }
     html += '</div>';
     return html;
   }
@@ -1541,6 +1612,42 @@ body{
         });
         renderPanel();
       });
+
+      var pickerKey = formKey + ":" + sIdx;
+      var existingFieldBtn = stageEl.querySelector("[data-existing-field-stage]");
+      existingFieldBtn.addEventListener("click", function(){
+        var cur = existingFieldPicker[pickerKey];
+        if(cur && cur.open){
+          delete existingFieldPicker[pickerKey];
+          renderPanel();
+          return;
+        }
+        existingFieldPicker[pickerKey] = {open: true};
+        ensureGhlFieldsLoaded(renderPanel);
+        renderPanel();
+      });
+      var existingFieldAddBtn = stageEl.querySelector('[data-existing-field-add="'+pickerKey+'"]');
+      if(existingFieldAddBtn){
+        existingFieldAddBtn.addEventListener("click", function(){
+          var sel = stageEl.querySelector('[data-existing-field-select="'+pickerKey+'"]');
+          var fieldKey = sel && sel.value;
+          var chosen = (ghlFieldsCache||[]).filter(function(f){ return f.fieldKey === fieldKey; })[0];
+          if(!chosen) return;
+          stage.fields.push({
+            id: "custom_" + Date.now().toString(36),
+            label: chosen.name,
+            type: chosen.type,
+            required: false,
+            standard: false,
+            ghlKey: chosen.fieldKey,
+            ghlFieldId: chosen.id,
+            ghlName: chosen.name,
+            dataType: chosen.dataType
+          });
+          delete existingFieldPicker[pickerKey];
+          renderPanel();
+        });
+      }
     });
 
     // Save button
