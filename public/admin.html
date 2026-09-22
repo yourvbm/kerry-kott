@@ -166,6 +166,15 @@ body{
 .mentee-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
 .mentee-adjust-msg{font-size:12px;color:var(--muted);width:100%;text-align:right;}
 .mentee-adjust-msg.err{color:var(--accent);}
+.mentee-warning{font-size:12.5px;color:var(--accent);background:#fdf1ef;border-radius:6px;padding:4px 8px;margin:0 0 6px;display:inline-block;}
+.mentee-sessions-toggle{
+  font-size:12.5px;color:var(--muted);background:none;border:none;cursor:pointer;
+  padding:0;margin-top:6px;text-decoration:underline;display:block;
+}
+.mentee-sessions-toggle:hover{color:var(--ink);}
+.mentee-sessions{list-style:none;margin:6px 0 0;padding:8px 12px;background:#FBF9F6;border:1px solid var(--border);border-radius:8px;font-size:13px;}
+.mentee-sessions li{padding:2px 0;}
+.mentee-sessions-empty{font-size:13px;color:var(--muted);margin:6px 0 0;font-style:italic;}
 
 .add-form-btn{
   font-size:14px;font-weight:600;padding:10px 18px;border-radius:999px;
@@ -326,6 +335,18 @@ body{
   <input type="password" id="login-pw" placeholder="Password" autocomplete="current-password">
   <button type="button" id="login-btn">Log In</button>
   <p class="login-error" id="login-error"></p>
+  <button type="button" id="forgot-link" class="home-card-delete" style="margin-top:14px;">Forgot password?</button>
+  <p class="login-error" id="forgot-msg" style="color:var(--ok);"></p>
+</div>
+
+<!-- ============ RESET PASSWORD (shown when the page loads with ?reset=<token>) ============ -->
+<div id="admin-reset" hidden>
+  <img class="kk-logo" src="https://assets.cdn.filesafe.space/ps7itsG5PeLgg7TDwnGV/media/6a47eac4989afcfcc93100ed.png" alt="Kerry Kott">
+  <h1>🌿 Set a new password</h1>
+  <p>Choose a new admin password — at least 6 characters.</p>
+  <input type="password" id="reset-pw" placeholder="New password" autocomplete="new-password">
+  <button type="button" id="reset-btn">Set Password &amp; Log In</button>
+  <p class="login-error" id="reset-error"></p>
 </div>
 
 <!-- ============ MAIN APP (shown after login) ============ -->
@@ -334,6 +355,7 @@ body{
   <div class="admin-head">
     <h1><button type="button" id="home-link">🌿 Admin</button></h1>
     <div class="sub" id="admin-sub">Edit field labels, options, tags &amp; evergreen copy — no code push needed.</div>
+    <button type="button" id="logout-link" class="home-card-delete" style="margin:0;">Log out</button>
   </div>
 
   <div class="tabs" id="section-tabs">
@@ -785,21 +807,95 @@ body{
     });
   }
 
+  /* ---------------- FORGOT / RESET PASSWORD ---------------- */
+  var forgotLink = document.getElementById("forgot-link");
+  var forgotMsg = document.getElementById("forgot-msg");
+  forgotLink.addEventListener("click", function(){
+    forgotLink.disabled = true; forgotMsg.textContent = "Sending...";
+    fetch(WORKER_BASE + "/forgot-password", {method: "POST"})
+      .then(function(r){ return r.json().then(function(body){ return {ok:r.ok, body:body}; }); })
+      .then(function(res){
+        forgotLink.disabled = false;
+        forgotMsg.textContent = res.ok
+          ? "Check " + res.body.email + " for a reset link."
+          : (res.body.error || "Couldn't send the email.");
+      })
+      .catch(function(){ forgotLink.disabled = false; forgotMsg.textContent = "Couldn't reach the server."; });
+  });
+
+  var resetEl = document.getElementById("admin-reset");
+  var resetPw = document.getElementById("reset-pw");
+  var resetBtn = document.getElementById("reset-btn");
+  var resetErr = document.getElementById("reset-error");
+  var resetToken = new URLSearchParams(location.search).get("reset");
+  if(resetToken){
+    loginEl.hidden = true;
+    resetEl.hidden = false;
+  }
+  resetPw.addEventListener("keydown", function(e){ if(e.key === "Enter") doReset(); });
+  resetBtn.addEventListener("click", doReset);
+  function doReset(){
+    var candidate = resetPw.value;
+    if(!candidate){ return; }
+    resetErr.textContent = "";
+    resetBtn.disabled = true; resetBtn.textContent = "Saving...";
+    fetch(WORKER_BASE + "/admin/reset-password", {
+      method: "POST", headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({token: resetToken, password: candidate})
+    })
+    .then(function(r){ return r.json().then(function(body){ return {ok:r.ok, body:body}; }); })
+    .then(function(res){
+      resetBtn.disabled = false; resetBtn.textContent = "Set Password & Log In";
+      if(!res.ok){ resetErr.textContent = res.body.error || "Couldn't reset the password."; return; }
+      pw = candidate;
+      try{ sessionStorage.setItem("kk_admin_pw", pw); }catch(e){}
+      // Drop ?reset=... from the URL so a refresh doesn't re-show this screen.
+      history.replaceState(null, "", location.pathname);
+      resetEl.hidden = true;
+      showApp();
+    })
+    .catch(function(){
+      resetBtn.disabled = false; resetBtn.textContent = "Set Password & Log In";
+      resetErr.textContent = "Couldn't reach the server. Please try again.";
+    });
+  }
+
   // Resume a session if the password is already stored in sessionStorage.
   try{
     var stored = sessionStorage.getItem("kk_admin_pw");
     if(stored){ pw = stored; }
   }catch(e){}
 
+  // Clears the stored session and shows the login screen again — used both
+  // for the explicit Log Out button and whenever any protected fetch comes
+  // back 401 (e.g. the admin password was rotated since this tab logged in).
+  function logOut(message){
+    try{ sessionStorage.removeItem("kk_admin_pw"); }catch(e){}
+    pw = null;
+    appEl.hidden = true;
+    loginEl.hidden = false;
+    loginPw.value = "";
+    loginErr.textContent = message || "";
+  }
+  document.getElementById("logout-link").addEventListener("click", function(){ logOut(); });
+
   function loadRegistry(){
     return fetch(WORKER_BASE + "/admin/registry", {headers: authHeaders()})
-      .then(function(r){ if(!r.ok) throw new Error("registry fetch failed"); return r.json(); })
+      .then(function(r){
+        if(r.status === 401){ throw new Error("__unauthorized__"); }
+        if(!r.ok) throw new Error("registry fetch failed");
+        return r.json();
+      })
       .then(function(reg){ FORMS = reg; });
   }
 
   function loadCalendars(){
     return fetch(WORKER_BASE + "/admin/calendars", {headers: authHeaders()})
-      .then(function(r){ if(!r.ok) throw new Error("calendars fetch failed"); return r.json(); })
+      .then(function(r){
+        if(r.status === 401){ throw new Error("__unauthorized__"); }
+        if(!r.ok) throw new Error("calendars fetch failed");
+        return r.json();
+      })
       .then(function(cals){ CALENDARS = cals; });
   }
 
@@ -808,7 +904,10 @@ body{
     appEl.hidden = false;
     loadRegistry()
       .then(render)
-      .catch(function(){ panelEl.innerHTML = '<p class="panel-error">Couldn\'t load the form list. Please refresh.</p>'; });
+      .catch(function(err){
+        if(err.message === "__unauthorized__"){ logOut("Your session expired. Please log in again."); return; }
+        panelEl.innerHTML = '<p class="panel-error">Couldn\'t load the form list. Please refresh.</p>';
+      });
   }
 
   function render(){
@@ -821,7 +920,10 @@ body{
         panelEl.innerHTML = '<p class="panel-loading">Loading calendars...</p>';
         loadCalendars()
           .then(render)
-          .catch(function(){ panelEl.innerHTML = '<p class="panel-error">Couldn\'t load the calendar list. Please refresh.</p>'; });
+          .catch(function(err){
+            if(err.message === "__unauthorized__"){ logOut("Your session expired. Please log in again."); return; }
+            panelEl.innerHTML = '<p class="panel-error">Couldn\'t load the calendar list. Please refresh.</p>';
+          });
         return;
       }
       if(state.activeCalendar === null){ renderCalendarsHome(); }
@@ -834,7 +936,10 @@ body{
         panelEl.innerHTML = '<p class="panel-loading">Loading mentees...</p>';
         loadMentees()
           .then(render)
-          .catch(function(){ panelEl.innerHTML = '<p class="panel-error">Couldn\'t load mentees. Please refresh.</p>'; });
+          .catch(function(err){
+            if(err.message === "__unauthorized__"){ logOut("Your session expired. Please log in again."); return; }
+            panelEl.innerHTML = '<p class="panel-error">Couldn\'t load mentees. Please refresh.</p>';
+          });
         return;
       }
       renderMentorshipHome();
@@ -1082,7 +1187,19 @@ body{
       .then(function(list){ MENTEES = list; });
   }
 
-  function mentorshipUrl(contactId){ return CAL_ORIGIN + "/mentorship-call/" + contactId; }
+  function mentorshipUrl(contactId, pkg){
+    var slug = encodeURIComponent(String(pkg || "").toLowerCase());
+    return CAL_ORIGIN + "/mentorship-call/" + slug + "/" + contactId;
+  }
+
+  var menteeSessionsOpen = {}; // contactId -> bool, which "Sessions" lists are expanded
+
+  function formatSessionDate(raw){
+    var d = new Date(raw);
+    if(isNaN(d)) return String(raw);
+    return d.toLocaleDateString("en-US", {month:"short", day:"numeric", year:"numeric"})
+      + " at " + d.toLocaleTimeString("en-US", {hour:"numeric", minute:"2-digit"});
+  }
 
   function renderMentorshipHome(){
     if(!MENTEES.length){
@@ -1090,12 +1207,30 @@ body{
       return;
     }
     var html = '<div class="home-list">' + MENTEES.map(function(m){
-      var link = m.bookingLink || mentorshipUrl(m.contactId);
+      var link = m.bookingLink || mentorshipUrl(m.contactId, m.package);
+      var isOpen = !!menteeSessionsOpen[m.contactId];
+      var warnings = "";
+      if(m.overAllotment){
+        warnings += '<div class="mentee-warning">Booked '+m.sessionsBooked+' — over their '+m.sessionsAllowed+'-session allotment</div>';
+      }
+      if(m.overPace && m.pace){
+        var noun = m.pace.period === "week" ? "this week" : "this month";
+        warnings += '<div class="mentee-warning">'+m.pace.used+' of '+m.pace.cap+' booked '+noun+' — ahead of pace</div>';
+      }
+      var sessionsList = "";
+      if(isOpen){
+        sessionsList = m.sessions.length
+          ? '<ul class="mentee-sessions">' + m.sessions.map(function(s){ return '<li>'+esc(formatSessionDate(s))+'</li>'; }).join("") + '</ul>'
+          : '<p class="mentee-sessions-empty">No sessions booked yet.</p>';
+      }
       return '<div class="home-card">'
         + '<div class="home-card-main">'
         + '<h3>'+esc(m.name || "(no name)")+'</h3>'
         + '<div class="mentee-meta">'+esc(m.package)+' &middot; '+m.sessionsBooked+' of '+m.sessionsAllowed+' booked &middot; <strong>'+m.sessionsLeft+' left</strong></div>'
+        + warnings
         + '<code class="home-card-url">'+esc(link)+'</code>'
+        + '<button type="button" class="mentee-sessions-toggle" data-toggle-sessions="'+esc(m.contactId)+'">'+(isOpen ? "Hide" : "Show")+' session dates ('+m.sessions.length+')</button>'
+        + sessionsList
         + '</div>'
         + '<div class="mentee-actions">'
         + '<button type="button" class="icon-btn" data-adjust="-1" data-contact="'+esc(m.contactId)+'" title="Remove a session (e.g. a no-show)">&minus;</button>'
@@ -1107,6 +1242,14 @@ body{
     }).join("") + '</div>';
 
     panelEl.innerHTML = html;
+
+    Array.prototype.forEach.call(panelEl.querySelectorAll("[data-toggle-sessions]"), function(btn){
+      btn.addEventListener("click", function(){
+        var id = btn.getAttribute("data-toggle-sessions");
+        menteeSessionsOpen[id] = !menteeSessionsOpen[id];
+        renderMentorshipHome();
+      });
+    });
 
     Array.prototype.forEach.call(panelEl.querySelectorAll("[data-copy-link]"), function(btn){
       btn.addEventListener("click", function(){
@@ -1145,7 +1288,7 @@ body{
     });
   }
 
-  if(pw){ showApp(); }
+  if(pw && !resetToken){ showApp(); }
 
   /* ---------------- DATA LOADING ---------------- */
   function loadForm(key){

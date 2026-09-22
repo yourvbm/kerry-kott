@@ -1,11 +1,14 @@
 /**
  * Kerry's per-mentee mentorship booking page:
- * schedule.kerrykott.com/mentorship-call/<contactId>
+ * schedule.kerrykott.com/mentorship-call/<package>/<contactId>
  *
  * One shared GHL calendar (the mentorship-call calendar) is booked by every
- * mentee, so this page's job is to show THIS contact's package + session
- * count above the same shared widget — not a distinct calendar per mentee,
- * unlike [slug].js next door. <contactId> is the GHL contact id, used as an
+ * mentee regardless of package, so this page's job is to show THIS
+ * contact's package + session count above the same shared widget — not a
+ * distinct calendar per mentee, unlike [slug].js next door. <package> (e.g.
+ * "3-month") is purely for a readable URL — it's never read or validated
+ * here, since the real source of truth is the GHL contact looked up by
+ * <contactId>. <contactId> is the GHL contact id, used as an
  * unguessable-enough slug (this is the same "unique link" emailed to the
  * mentee and shown to Kerry in admin.html's Mentorship tab).
  *
@@ -34,7 +37,8 @@ function paceLine(mentee) {
 function renderPage(mentee, contactId) {
   const firstName = esc((mentee.name || '').split(' ')[0] || 'there');
   const pkg = esc(mentee.package);
-  const canonical = 'https://schedule.kerrykott.com/mentorship-call/' + contactId;
+  const packageSlug = encodeURIComponent(String(mentee.package || '').toLowerCase());
+  const canonical = 'https://schedule.kerrykott.com/mentorship-call/' + packageSlug + '/' + contactId;
   const pace = esc(paceLine(mentee));
 
   return `<!doctype html>
