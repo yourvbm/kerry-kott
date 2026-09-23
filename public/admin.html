@@ -1371,33 +1371,13 @@ body{
       // (reported via postMessage; see the "ef-resize" script in each form
       // page), so there's no dead space below a short form or clipping on a
       // tall one. min-height is just the size before that first message
-      // arrives. Re-copy and re-paste this whole snippet anywhere it's
-      // already embedded to pick up auto-sizing.
+      // arrives. Embeds pasted before embed.js existed carry the old inline
+      // script and need one last re-paste; after that, never again.
       var iframeId = "ef-iframe-" + key;
       var embedCode = '<iframe id="'+iframeId+'" src="'+url+'" style="width:100%;border:none;min-height:'+(entry.minHeight||700)+'px;display:block;"></iframe>'
-        + '<script>(function(){var f=document.getElementById("'+iframeId+'");if(!f)return;'
-        // fit(): Squarespace Fluid Engine pins the Code Block to a fixed
-        // number of grid rows per breakpoint (set by dragging it in the
-        // editor). Sizing the iframe correctly doesn't shrink that block, so
-        // whatever rows it spans beyond the form's real height show as dead
-        // space under the button (measured on /connect at phone width: block
-        // 934px, form 704px). When nothing else in the section sits beside or
-        // below the form, collapse the block to one auto-height row at its
-        // start line and drop the empty rows after it. Recomputed on every
-        // resize because the row layout differs per breakpoint.
-        + 'function fit(){var b=f.closest(".fe-block"),g=b&&b.parentElement;if(!g||!/fluid-engine/.test(g.className))return;'
-        + 'b.style.gridRow="";g.style.gridTemplateRows="";'
-        + 'var a=parseInt(getComputedStyle(b).gridRowStart,10);if(!(a>0))return;'
-        + 'for(var i=0;i<g.children.length;i++){var k=g.children[i];if(k!==b&&parseInt(getComputedStyle(k).gridRowEnd,10)>a)return;}'
-        + 'var r=getComputedStyle(g).gridTemplateRows.split(" ").slice(0,a-1);r.push("auto");'
-        + 'b.style.gridRow=a+" / "+(a+1);g.style.gridTemplateRows=r.join(" ");}'
-        + 'window.addEventListener("resize",fit);'
-        + 'window.addEventListener("message",function(e){'
-        + 'if(e.source===f.contentWindow&&e.data&&e.data.type==="ef-resize"&&typeof e.data.height==="number"){'
-        // min-height is only a fallback for before the first real
-        // measurement arrives — once one does, clear it, or it permanently
-        // floors the iframe and leaves dead space under shorter content.
-        + 'f.style.minHeight="0";f.style.height=e.data.height+"px";fit();}});})();<\/script>';
+        // All sizing logic lives in embed.js on this site, so a fix deployed
+        // there is live on every embed without re-pasting in Squarespace.
+        + '<script src="'+SITE_ORIGIN+'/embed.js"><\/script>';
       html += '<div class="embed-box">'
         + '<div class="embed-row">'
         + '<code class="embed-code">'+esc(embedCode)+'</code>'

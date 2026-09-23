@@ -464,6 +464,15 @@ html,body{margin:0;padding:0;}
     catch(e){}
   }
   window.addEventListener("load", report);
+  // embed.js on the parent page loads separately from this iframe, so its
+  // listener can miss the first report (and report() never resends an
+  // unchanged height). Once it's listening it asks for the size again.
+  window.addEventListener("message", function(e){
+    if(e.source === window.parent && e.data && e.data.type === "ef-request-size"){
+      lastReportedHeight = null;
+      report();
+    }
+  });
   if(window.ResizeObserver){ new ResizeObserver(report).observe(el); }
   // Safety net: ResizeObserver plus the "load" listener should always
   // catch the transition from the tiny loading placeholder to the real
