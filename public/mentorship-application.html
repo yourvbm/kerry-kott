@@ -396,7 +396,14 @@ html,body{margin:0;padding:0;}
     stagesById[completeStage.id] = completeStage;
 
     document.getElementById("ef-fields-started").innerHTML = startedStage.fields.map(renderField).join("");
-    document.getElementById("ef-fields-complete").innerHTML = completeStage.fields.map(renderField).join("");
+    // Contact fields (email etc.) already asked on step 1 are not asked
+    // again: collect() reads every step's inputs on submit, so step 1's
+    // answer still identifies the contact. A duplicate input here would also
+    // send the value twice ("a@x.com, a@x.com").
+    var askedKeys = {};
+    startedStage.fields.forEach(function(f){ if(f.standardKey) askedKeys[f.standardKey] = true; });
+    var completeFields = completeStage.fields.filter(function(f){ return !(f.standardKey && askedKeys[f.standardKey]); });
+    document.getElementById("ef-fields-complete").innerHTML = completeFields.map(renderField).join("");
     populateCountrySelect(form);
 
     loadingEl.hidden = true;
