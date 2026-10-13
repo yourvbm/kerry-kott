@@ -616,7 +616,25 @@ html,body{margin:0;padding:0;}
     var saved = restoreState();
     prefillFromURL();
     if(saved && saved.step>0){ stage1Sent = true; }
-    showStep(saved && saved.step ? Math.min(saved.step, total-1) : 0);
+    var startStep = saved && saved.step ? Math.min(saved.step, total-1) : 0;
+
+    // Resume link from an abandoned-cart email (?c=<contactId>): refill step 1
+    // from what they already entered (kept in GHL), then drop them on step 2.
+    // If the lookup fails or step 1 is somehow incomplete, nothing changes.
+    var resumeId = null;
+    try{ resumeId = new URLSearchParams(window.location.search).get("c"); }catch(e){}
+    if(resumeId && !window.__EF_PREVIEW_CFG__){
+      fetch(CONFIG.WORKER_BASE + "/resume?form=" + CONFIG.FORM_KEY + "&id=" + encodeURIComponent(resumeId))
+        .then(function(r){ if(!r.ok) throw new Error("no resume"); return r.json(); })
+        .then(function(out){
+          applyData(out.values || {});
+          stage1Sent = true; // contact already exists with the Started tag
+          if(validateStep(0)){ showStep(Math.min(1, total-1)); }
+          else { errEl.hidden = true; showStep(0); }
+        })
+        .catch(function(){ /* fall back to the normal form */ });
+    }
+    showStep(startStep);
   }
 })();
 </script>

@@ -1385,6 +1385,22 @@ body{
         + '<span class="copy-msg" id="copy-msg-'+key+'"></span>'
         + '</div>'
         + '</div>';
+
+      // Two-step forms get a resume link for the abandoned-cart email. The
+      // merge field fills in the contact's own id; the page then refills
+      // step 1 and lands them on step 2. Must open the hosted page directly
+      // (not the Squarespace embed), so it's the bare page URL.
+      if(entry.kind !== "generic" && cfg.stages.length > 1){
+        var resumeLink = url + "?c={{contact.id}}";
+        html += '<div class="embed-box">'
+          + '<div class="mini" style="margin-bottom:6px;"><strong>Resume link</strong> &mdash; paste this as the button/link in the abandoned-cart email, in place of the plain form link. It refills what they already entered and takes them to the next step.</div>'
+          + '<div class="embed-row">'
+          + '<code class="embed-code">'+esc(resumeLink)+'</code>'
+          + '<button type="button" class="copy-embed-btn" id="copy-resume-'+key+'" data-resume="'+esc(resumeLink)+'">Copy resume link</button>'
+          + '<span class="copy-msg" id="copy-resume-msg-'+key+'"></span>'
+          + '</div>'
+          + '</div>';
+      }
     }
     cfg.stages.forEach(function(stage, sIdx){
       html += renderStage(key, cfg, stage, sIdx);
@@ -1555,8 +1571,20 @@ body{
     return html;
   }
 
+  // A locked contact field (email) is only protected on the stage that
+  // actually carries it for matching. If the same field is asked on another
+  // stage of the same form it is redundant there, so it can be deleted.
+  function isLockedHere(formKey, stage, field){
+    if(!field.locked) return false;
+    var cfg = state.configs[formKey];
+    if(!cfg || !field.standardKey) return true;
+    return !cfg.stages.some(function(st){
+      return st !== stage && st.fields.some(function(f){ return f.standardKey === field.standardKey; });
+    });
+  }
   function renderField(formKey, stage, field, sIdx, fIdx){
     var isStandard = !!field.standard;
+    var lockedHere = isLockedHere(formKey, stage, field);
     var html = '<div class="field-row" data-field-idx="'+fIdx+'">';
     html += '<div class="field-row-top">';
 
@@ -1573,7 +1601,7 @@ body{
     html += '<div class="field-btns">'
       + '<button type="button" class="icon-btn f-up" title="Move up">↑</button>'
       + '<button type="button" class="icon-btn f-down" title="Move down">↓</button>'
-      + '<button type="button" class="icon-btn danger f-delete" title="Delete field"'+(field.locked?' disabled':'')+'>✕</button>'
+      + '<button type="button" class="icon-btn danger f-delete" title="Delete field"'+(lockedHere?' disabled':'')+'>✕</button>'
       + '</div>';
 
     html += '</div>'; // field-row-top
@@ -1581,7 +1609,7 @@ body{
     html += '<div style="margin-top:8px;"><label class="mini">Subtitle (optional, shown under the question)</label>'
       + '<input type="text" class="f-note" placeholder="e.g. While we will do our best to accommodate..." value="'+esc(field.note||"")+'"></div>';
 
-    if(field.locked){
+    if(lockedHere){
       html += '<span class="locked-note">used to match this contact — don\'t delete</span>';
     }
 
@@ -1695,6 +1723,20 @@ body{
       copyBtn.addEventListener("click", function(){
         var code = copyBtn.getAttribute("data-embed");
         var msgEl = document.getElementById("copy-msg-"+formKey);
+        function showCopied(){ if(msgEl){ msgEl.textContent = "Copied!"; setTimeout(function(){ if(msgEl) msgEl.textContent = ""; }, 2000); } }
+        if(navigator.clipboard && navigator.clipboard.writeText){
+          navigator.clipboard.writeText(code).then(showCopied, function(){ fallbackCopy(code, showCopied); });
+        } else {
+          fallbackCopy(code, showCopied);
+        }
+      });
+    }
+    // Resume-link copy button
+    var resumeBtn = document.getElementById("copy-resume-"+formKey);
+    if(resumeBtn){
+      resumeBtn.addEventListener("click", function(){
+        var code = resumeBtn.getAttribute("data-resume");
+        var msgEl = document.getElementById("copy-resume-msg-"+formKey);
         function showCopied(){ if(msgEl){ msgEl.textContent = "Copied!"; setTimeout(function(){ if(msgEl) msgEl.textContent = ""; }, 2000); } }
         if(navigator.clipboard && navigator.clipboard.writeText){
           navigator.clipboard.writeText(code).then(showCopied, function(){ fallbackCopy(code, showCopied); });

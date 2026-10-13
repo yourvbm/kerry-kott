@@ -829,6 +829,33 @@ async function handleMenteeGet(request, env, cors) {
   return json({ ...summary, pace }, 200, cors);
 }
 
+// GET /resume?form=<key>&id=<contactId> — public. Powers the "finish your
+// application" link in abandoned-cart emails (?c={{contact.id}}). Returns only
+// what the person themselves entered on the form's FIRST step, keyed by field
+// id, so the page can refill step 1 and drop them on step 2. Unknown form or
+// contact -> 404 and the page just loads normally.
+async function handleResumeGet(request, env, cors) {
+  const u = new URL(request.url);
+  const formKey = u.searchParams.get("form");
+  const contactId = u.searchParams.get("id");
+  if (!formKey || !contactId) return json({ error: "Missing form or id" }, 400, cors);
+  const cfg = await loadConfig(env, formKey);
+  const started = cfg && Array.isArray(cfg.stages) && cfg.stages.find((s) => s.id === "started");
+  if (!started) return json({ error: "Not found" }, 404, cors);
+  const contact = await getContact(env, contactId);
+  if (!contact) return json({ error: "Not found" }, 404, cors);
+
+  const values = {};
+  for (const f of started.fields || []) {
+    let v = "";
+    if (f.standard) v = f.standardKey ? contact[f.standardKey] : "";
+    else if (f.ghlFieldId) v = cfValue(contact, f.ghlFieldId);
+    if (Array.isArray(v)) v = v.join(", ");
+    if (v !== undefined && v !== null && v !== "") values[f.id] = v;
+  }
+  return json({ values }, 200, cors);
+}
+
 // GET /admin/mentees — protected (the admin's Mentorship tab)
 async function handleAdminMenteesGet(request, env, cors) {
   if (!(await requireAdmin(request, env))) return json({ error: "Unauthorized" }, 401, cors);
@@ -1011,6 +1038,11 @@ export default {
     // POST /admin/calendars — protected (saves the whole list)
     if (request.method === "POST" && path === "/admin/calendars") {
       return handleAdminCalendarsSave(request, env, cors);
+    }
+
+    // GET /resume?form=<key>&id=<contactId> — public (abandoned-cart resume link)
+    if (request.method === "GET" && path === "/resume") {
+      return handleResumeGet(request, env, cors);
     }
 
     // GET /mentee?id=<contactId> — public (schedule.kerrykott.com/mentorship-call/<id>)
