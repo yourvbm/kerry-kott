@@ -777,19 +777,20 @@ function currentPeriodWindow(period) {
   return { start, end };
 }
 
+// GHL's per-contact endpoint; the calendar-events endpoint can't filter by
+// contact and rejects very long windows. Filtered to the mentorship calendar
+// and to [start, end) here.
 async function fetchAppointments(env, contactId, start, end) {
-  const params = new URLSearchParams({
-    locationId: LOCATION_ID,
-    calendarId: MENTORSHIP_CALENDAR_ID,
-    contactId,
-    startTime: String(start.getTime()),
-    endTime: String(end.getTime()),
-  });
   try {
-    const res = await fetch(`${BASE}/calendars/events?${params}`, { headers: ghlHeaders(env) });
+    const res = await fetch(`${BASE}/contacts/${contactId}/appointments`, { headers: ghlHeaders(env) });
     if (!res.ok) return [];
     const out = await res.json();
-    return (out.events || []).filter((e) => e.appointmentStatus !== "cancelled");
+    return (out.events || []).filter((e) => {
+      if (e.calendarId !== MENTORSHIP_CALENDAR_ID) return false;
+      if (["cancelled", "invalid"].includes(String(e.appointmentStatus || "").toLowerCase())) return false;
+      const t = new Date(e.startTime).getTime();
+      return t >= start.getTime() && t < end.getTime();
+    });
   } catch {
     return [];
   }
