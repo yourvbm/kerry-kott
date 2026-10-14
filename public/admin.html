@@ -1226,7 +1226,7 @@ body{
       return '<div class="home-card">'
         + '<div class="home-card-main">'
         + '<h3>'+esc(m.name || "(no name)")+'</h3>'
-        + '<div class="mentee-meta">'+esc(m.package)+' &middot; Session '+m.currentSession+' of '+m.sessionsAllowed+' &middot; <strong>'+m.sessionsLeft+' left</strong>'+(m.endDate ? ' &middot; ends '+esc(formatSessionDate(m.endDate).split(' at ')[0]) : '')+'</div>'
+        + '<div class="mentee-meta">'+esc(m.package)+' &middot; '+(m.sessionsLeft <= 0 ? 'All '+m.sessionsAllowed+' sessions booked' : 'Session '+m.currentSession+' of '+m.sessionsAllowed+' &middot; <strong>'+m.sessionsLeft+' left</strong>')+(m.endDate ? ' &middot; ends '+esc(formatSessionDate(m.endDate).split(' at ')[0]) : '')+'</div>'
         + warnings
         + '<code class="home-card-url">'+esc(link)+'</code>'
         + '<button type="button" class="mentee-sessions-toggle" data-toggle-sessions="'+esc(m.contactId)+'">'+(isOpen ? "Hide" : "Show")+' session dates ('+m.sessions.length+')</button>'

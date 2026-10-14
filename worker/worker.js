@@ -952,7 +952,8 @@ async function handleAdminMenteeAdjust(request, env, cors) {
 
   // Sessions Left and Current Session always move in opposite directions.
   const next = Math.max(0, Math.min(summary.sessionsAllowed, summary.sessionsLeft + delta));
-  const current = Math.max(0, Math.min(summary.sessionsAllowed, summary.currentSession - (next - summary.sessionsLeft)));
+  // Current Session is the NEXT session number (starts at 1), so it may reach allowed + 1.
+  const current = Math.max(1, Math.min(summary.sessionsAllowed + 1, summary.currentSession - (next - summary.sessionsLeft)));
   const ok = await setSessionCounters(env, contactId, next, current);
   if (!ok) return json({ error: "Couldn't update GHL" }, 502, cors);
   return json({ ok: true, sessionsLeft: next, currentSession: current }, 200, cors);
@@ -979,7 +980,7 @@ async function handleAdminMenteeComplete(request, env, cors) {
   // 1. Note
   const fmt = (v) => (v ? new Date(v).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }) : "");
   const term = summary.startDate || summary.endDate ? ` Term: ${fmt(summary.startDate) || "?"} to ${fmt(summary.endDate) || "?"}.` : "";
-  const note = `Mentorship completed ${fmt(new Date())}. Package: ${summary.package}. Sessions used: ${summary.currentSession} of ${summary.sessionsAllowed} (${summary.sessionsLeft} left).${term}`;
+  const note = `Mentorship completed ${fmt(new Date())}. Package: ${summary.package}. Sessions used: ${Math.max(summary.sessionsAllowed - summary.sessionsLeft, 0)} of ${summary.sessionsAllowed} (${summary.sessionsLeft} left).${term}`;
   const noteRes = await fetch(`${BASE}/contacts/${contactId}/notes`, {
     method: "POST", headers: ghlHeaders(env), body: JSON.stringify({ body: note }),
   });
