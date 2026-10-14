@@ -1235,6 +1235,7 @@ body{
         + '<div class="mentee-actions">'
         + '<button type="button" class="icon-btn" data-adjust="-1" data-contact="'+esc(m.contactId)+'" title="Remove a session (e.g. a no-show)">&minus;</button>'
         + '<button type="button" class="icon-btn" data-adjust="1" data-contact="'+esc(m.contactId)+'" title="Add back a session (e.g. comp one)">&plus;</button>'
+        + '<button type="button" class="icon-btn danger" data-delete-mentee="'+esc(m.contactId)+'" data-name="'+esc(m.name || "this contact")+'" title="Delete this contact from GHL">&#128465;</button>'
         + '<button type="button" class="copy-embed-btn" data-copy-link="'+esc(link)+'">Copy link</button>'
         + '<span class="mentee-adjust-msg" data-msg-for="'+esc(m.contactId)+'"></span>'
         + '</div>'
@@ -1259,6 +1260,29 @@ body{
         if(navigator.clipboard && navigator.clipboard.writeText){
           navigator.clipboard.writeText(link).then(showCopied, function(){ fallbackCopy(link, showCopied); });
         } else { fallbackCopy(link, showCopied); }
+      });
+    });
+
+    Array.prototype.forEach.call(panelEl.querySelectorAll("[data-delete-mentee]"), function(btn){
+      btn.addEventListener("click", function(){
+        var contactId = btn.getAttribute("data-delete-mentee");
+        var name = btn.getAttribute("data-name");
+        var msgEl = panelEl.querySelector('[data-msg-for="'+contactId+'"]');
+        var typed = window.prompt("This permanently deletes " + name + " from GHL, including their booking link and history. It can't be undone.\n\nType DELETE to confirm.");
+        if(typed === null) return;
+        if(typed.trim() !== "DELETE"){ msgEl.textContent = "Not deleted. You didn't type DELETE."; msgEl.className = "mentee-adjust-msg err"; return; }
+        btn.disabled = true;
+        fetch(WORKER_BASE + "/admin/mentees/delete", {
+          method: "POST", headers: authHeaders(),
+          body: JSON.stringify({contactId: contactId})
+        })
+        .then(function(r){ return r.json().then(function(body){ return {ok:r.ok, body:body}; }); })
+        .then(function(res){
+          if(!res.ok){ btn.disabled = false; msgEl.textContent = res.body.error || "Couldn't delete."; msgEl.className = "mentee-adjust-msg err"; return; }
+          MENTEES = MENTEES.filter(function(x){ return x.contactId !== contactId; });
+          renderMentorshipHome();
+        })
+        .catch(function(){ btn.disabled = false; msgEl.textContent = "Couldn't reach the server."; msgEl.className = "mentee-adjust-msg err"; });
       });
     });
 

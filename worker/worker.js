@@ -947,6 +947,26 @@ async function handleAdminMenteeAdjust(request, env, cors) {
   return json({ ok: true, sessionsLeft: next, currentSession: current }, 200, cors);
 }
 
+// POST /admin/mentees/delete {contactId} — protected. Permanently deletes the
+// GHL contact. Only contacts that actually have a mentorship Package can be
+// deleted here, so this can't be pointed at an arbitrary contact.
+async function handleAdminMenteeDelete(request, env, cors) {
+  if (!(await requireAdmin(request, env))) return json({ error: "Unauthorized" }, 401, cors);
+  let d;
+  try { d = await request.json(); }
+  catch { return json({ error: "Bad JSON" }, 400, cors); }
+  const contactId = d.contactId;
+  if (!contactId) return json({ error: "contactId required" }, 400, cors);
+
+  const contact = await getContact(env, contactId);
+  const summary = contact && mentorshipSummary(contact);
+  if (!summary) return json({ error: "Not found" }, 404, cors);
+
+  const res = await fetch(`${BASE}/contacts/${contactId}`, { method: "DELETE", headers: ghlHeaders(env) });
+  if (!res.ok) return json({ error: "Couldn't delete the contact in GHL" }, 502, cors);
+  return json({ ok: true }, 200, cors);
+}
+
 // ---------- router ----------
 
 export default {
@@ -1053,6 +1073,11 @@ export default {
     // GET /admin/mentees — protected
     if (request.method === "GET" && path === "/admin/mentees") {
       return handleAdminMenteesGet(request, env, cors);
+    }
+
+    // POST /admin/mentees/delete — protected
+    if (request.method === "POST" && path === "/admin/mentees/delete") {
+      return handleAdminMenteeDelete(request, env, cors);
     }
 
     // POST /admin/mentees/adjust — protected
