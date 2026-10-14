@@ -947,10 +947,12 @@ async function handleAdminMenteeAdjust(request, env, cors) {
   return json({ ok: true, sessionsLeft: next, currentSession: current }, 200, cors);
 }
 
-// POST /admin/mentees/delete {contactId} — protected. Permanently deletes the
-// GHL contact. Only contacts that actually have a mentorship Package can be
-// deleted here, so this can't be pointed at an arbitrary contact.
-async function handleAdminMenteeDelete(request, env, cors) {
+// POST /admin/mentees/complete {contactId} — protected. Ends a mentorship
+// WITHOUT deleting the contact: (1) adds a summary note, (2) moves their
+// opportunity to "Complete" in the Mentorship pipeline, (3) clears every
+// mentorship field, which is what drops them from the admin list. The clear
+// runs last so a failure earlier leaves them listed and safe to retry.
+async function handleAdminMenteeComplete(request, env, cors) {
   if (!(await requireAdmin(request, env))) return json({ error: "Unauthorized" }, 401, cors);
   let d;
   try { d = await request.json(); }
@@ -958,13 +960,53 @@ async function handleAdminMenteeDelete(request, env, cors) {
   const contactId = d.contactId;
   if (!contactId) return json({ error: "contactId required" }, 400, cors);
 
+  const ids = await getExtraFieldIds(env);
   const contact = await getContact(env, contactId);
-  const summary = contact && mentorshipSummary(contact);
+  const summary = contact && mentorshipSummary(contact, ids);
   if (!summary) return json({ error: "Not found" }, 404, cors);
 
-  const res = await fetch(`${BASE}/contacts/${contactId}`, { method: "DELETE", headers: ghlHeaders(env) });
-  if (!res.ok) return json({ error: "Couldn't delete the contact in GHL" }, 502, cors);
-  return json({ ok: true }, 200, cors);
+  // 1. Note
+  const fmt = (v) => (v ? new Date(v).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }) : "");
+  const term = summary.startDate || summary.endDate ? ` Term: ${fmt(summary.startDate) || "?"} to ${fmt(summary.endDate) || "?"}.` : "";
+  const note = `Mentorship completed ${fmt(new Date())}. Package: ${summary.package}. Sessions used: ${summary.currentSession} of ${summary.sessionsAllowed} (${summary.sessionsLeft} left).${term}`;
+  const noteRes = await fetch(`${BASE}/contacts/${contactId}/notes`, {
+    method: "POST", headers: ghlHeaders(env), body: JSON.stringify({ body: note }),
+  });
+  if (!noteRes.ok) return json({ error: "Couldn't add the note in GHL. Nothing was changed." }, 502, cors);
+
+  // 2. Opportunity -> Complete (Mentorship pipeline)
+  const pipRes = await fetch(`${BASE}/opportunities/pipelines?locationId=${LOCATION_ID}`, { headers: ghlHeaders(env) });
+  if (!pipRes.ok) return json({ error: "Note added, but couldn't read the pipelines. Fields were not cleared." }, 502, cors);
+  const pipelines = (await pipRes.json()).pipelines || [];
+  const pipeline = pipelines.find((p) => /mentorship/i.test(p.name || ""));
+  const stage = pipeline && (pipeline.stages || []).find((s) => /^complete/i.test((s.name || "").trim()));
+  if (!stage) return json({ error: "Note added, but there is no 'Complete' stage in a Mentorship pipeline. Fields were not cleared." }, 502, cors);
+
+  const oppRes = await fetch(
+    `${BASE}/opportunities/search?location_id=${LOCATION_ID}&contact_id=${contactId}&pipeline_id=${pipeline.id}`,
+    { headers: ghlHeaders(env) }
+  );
+  if (!oppRes.ok) return json({ error: "Note added, but couldn't look up the opportunity. Fields were not cleared." }, 502, cors);
+  const opps = ((await oppRes.json()).opportunities || []).filter((o) => o.pipelineStageId !== stage.id);
+  for (const o of opps) {
+    const r = await fetch(`${BASE}/opportunities/${o.id}`, {
+      method: "PUT", headers: ghlHeaders(env),
+      body: JSON.stringify({ pipelineId: pipeline.id, pipelineStageId: stage.id }),
+    });
+    if (!r.ok) return json({ error: "Note added, but couldn't move the opportunity. Fields were not cleared." }, 502, cors);
+  }
+
+  // 3. Clear every mentorship field
+  const fieldIds = [
+    MENTORSHIP_FIELD_IDS.package, MENTORSHIP_FIELD_IDS.sessionsAllowed, MENTORSHIP_FIELD_IDS.sessionsLeft,
+    MENTORSHIP_FIELD_IDS.bookingLink, ids.currentSession, ids.startDate, ids.endDate,
+  ].filter(Boolean);
+  const clearRes = await fetch(`${BASE}/contacts/${contactId}`, {
+    method: "PUT", headers: ghlHeaders(env),
+    body: JSON.stringify({ customFields: fieldIds.map((id) => ({ id, field_value: "" })) }),
+  });
+  if (!clearRes.ok) return json({ error: "Note and stage done, but couldn't clear the fields." }, 502, cors);
+  return json({ ok: true, moved: opps.length }, 200, cors);
 }
 
 // ---------- router ----------
@@ -1075,9 +1117,9 @@ export default {
       return handleAdminMenteesGet(request, env, cors);
     }
 
-    // POST /admin/mentees/delete — protected
-    if (request.method === "POST" && path === "/admin/mentees/delete") {
-      return handleAdminMenteeDelete(request, env, cors);
+    // POST /admin/mentees/complete — protected
+    if (request.method === "POST" && path === "/admin/mentees/complete") {
+      return handleAdminMenteeComplete(request, env, cors);
     }
 
     // POST /admin/mentees/adjust — protected
