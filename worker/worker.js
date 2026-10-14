@@ -718,7 +718,7 @@ const MENTORSHIP_FIELD_IDS = {
 const PACKAGE_RULES = {
   "1-Month": { period: "week", cap: 1 },
   "3-Month": { period: "month", cap: 2 },
-  "6-Month": { period: "month", cap: 2 },
+  "5-Month": { period: "month", cap: 2 },
 };
 
 async function getContact(env, contactId) {
