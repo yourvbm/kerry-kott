@@ -796,18 +796,28 @@ async function fetchAppointments(env, contactId, start, end) {
   }
 }
 
-async function countAppointmentsInWindow(env, contactId, start, end) {
-  return (await fetchAppointments(env, contactId, start, end)).length;
+// Package start date -> Date (start of that day, UTC), or null if unset/invalid.
+function packageSince(startDate) {
+  if (!startDate) return null;
+  const d = new Date(startDate);
+  if (isNaN(d)) return null;
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+}
+
+async function countAppointmentsInWindow(env, contactId, start, end, since) {
+  const from = since && since > start ? since : start;
+  return (await fetchAppointments(env, contactId, from, end)).length;
 }
 
 // All-time appointment history for a mentee (no window) — the ground truth
 // for "how many has this person actually booked", since Sessions Left
 // floors at 0 and stops reflecting reality once someone books past their
 // allotment.
-const EPOCH_START = new Date(0);
-const FAR_FUTURE = new Date(Date.now() + 10 * 365 * 86400000);
-async function listAllAppointments(env, contactId) {
-  const events = await fetchAppointments(env, contactId, EPOCH_START, FAR_FUTURE);
+// Only appointments on/after `since` (the current package's start date) count,
+// so a renewal or re-signup doesn't inherit the previous package's bookings.
+// Computed per call: Date.now() at module scope is frozen in Workers.
+async function listAllAppointments(env, contactId, since) {
+  const events = await fetchAppointments(env, contactId, since || new Date(0), new Date(Date.now() + 10 * 365 * 86400000));
   return events
     .map((e) => e.startTime)
     .filter(Boolean)
@@ -845,7 +855,7 @@ async function handleMenteeGet(request, env, cors) {
   const rule = PACKAGE_RULES[summary.package];
   if (rule) {
     const { start, end } = currentPeriodWindow(rule.period);
-    const used = await countAppointmentsInWindow(env, contactId, start, end);
+    const used = await countAppointmentsInWindow(env, contactId, start, end, packageSince(summary.startDate));
     pace = { used, cap: rule.cap, period: rule.period };
   }
 
@@ -902,12 +912,13 @@ async function handleAdminMenteesGet(request, env, cors) {
     .filter(Boolean);
 
   const mentees = await Promise.all(base.map(async (m) => {
-    const sessions = await listAllAppointments(env, m.contactId);
+    const since = packageSince(m.startDate);
+    const sessions = await listAllAppointments(env, m.contactId, since);
     const rule = PACKAGE_RULES[m.package];
     let pace = null;
     if (rule) {
       const { start, end } = currentPeriodWindow(rule.period);
-      const used = await countAppointmentsInWindow(env, m.contactId, start, end);
+      const used = await countAppointmentsInWindow(env, m.contactId, start, end, since);
       pace = { used, cap: rule.cap, period: rule.period };
     }
     return {
