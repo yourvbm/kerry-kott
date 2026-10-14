@@ -19,7 +19,6 @@
 // Secrets (set in Cloudflare, never in this file):
 //   env.GHL_PIT               — GHL Private Integration Token
 //   env.MASTER_ADMIN_PASSWORD — Miriam's own cross-client fallback login
-//   env.MENTORSHIP_WEBHOOK_SECRET — shared secret for /webhook/session-booked
 // Kerry's own admin password is NOT a secret — it's a salted hash in KV
 // (see PASSWORD_KV_KEY below), self-resettable via /forgot-password.
 // Bindings:
@@ -733,13 +732,33 @@ function cfValue(contact, fieldId) {
   return cf ? cf.value : "";
 }
 
-async function setSessionsLeft(env, contactId, value) {
+// Fields added after launch are resolved by their GHL key ({{contact.<key>}})
+// instead of a hard-coded id, then cached for the life of the isolate.
+let extraFieldIds = null;
+async function getExtraFieldIds(env) {
+  if (extraFieldIds) return extraFieldIds;
+  const res = await fetch(`${BASE}/locations/${LOCATION_ID}/customFields`, { headers: ghlHeaders(env) });
+  if (!res.ok) return {};
+  const out = await res.json();
+  const byKey = {};
+  for (const f of out.customFields || []) byKey[String(f.fieldKey || "").replace(/^contact\./, "")] = f.id;
+  extraFieldIds = {
+    currentSession: byKey.current_session,
+    startDate: byKey.mentorship_start_date,
+    endDate: byKey.mentorship_end_date,
+  };
+  return extraFieldIds;
+}
+
+// Writes the two counters together so they can't drift apart.
+async function setSessionCounters(env, contactId, left, current) {
+  const ids = await getExtraFieldIds(env);
+  const customFields = [{ id: MENTORSHIP_FIELD_IDS.sessionsLeft, field_value: left }];
+  if (ids.currentSession) customFields.push({ id: ids.currentSession, field_value: current });
   const res = await fetch(`${BASE}/contacts/${contactId}`, {
     method: "PUT",
     headers: ghlHeaders(env),
-    body: JSON.stringify({
-      customFields: [{ id: MENTORSHIP_FIELD_IDS.sessionsLeft, field_value: value }],
-    }),
+    body: JSON.stringify({ customFields }),
   });
   return res.ok;
 }
@@ -794,7 +813,7 @@ async function listAllAppointments(env, contactId) {
     .sort();
 }
 
-function mentorshipSummary(contact) {
+function mentorshipSummary(contact, ids = {}) {
   const pkg = cfValue(contact, MENTORSHIP_FIELD_IDS.package);
   if (!pkg) return null;
   const allowed = Number(cfValue(contact, MENTORSHIP_FIELD_IDS.sessionsAllowed)) || 0;
@@ -806,6 +825,9 @@ function mentorshipSummary(contact) {
     sessionsAllowed: allowed,
     sessionsBooked: Math.max(allowed - left, 0),
     sessionsLeft: left,
+    currentSession: Number(cfValue(contact, ids.currentSession)) || 0,
+    startDate: cfValue(contact, ids.startDate) || "",
+    endDate: cfValue(contact, ids.endDate) || "",
   };
 }
 
@@ -815,7 +837,7 @@ async function handleMenteeGet(request, env, cors) {
   if (!contactId) return json({ error: "Missing id" }, 400, cors);
   const contact = await getContact(env, contactId);
   if (!contact) return json({ error: "Not found" }, 404, cors);
-  const summary = mentorshipSummary(contact);
+  const summary = mentorshipSummary(contact, await getExtraFieldIds(env));
   if (!summary) return json({ error: "Not found" }, 404, cors);
 
   let pace = null;
@@ -870,9 +892,10 @@ async function handleAdminMenteesGet(request, env, cors) {
   });
   if (!res.ok) return json({ error: "Couldn't load mentees from GHL" }, 502, cors);
   const out = await res.json();
+  const extraIds = await getExtraFieldIds(env);
   const base = (out.contacts || [])
     .map((c) => {
-      const summary = mentorshipSummary(c);
+      const summary = mentorshipSummary(c, extraIds);
       return summary && { contactId: c.id, ...summary };
     })
     .filter(Boolean);
@@ -900,8 +923,8 @@ async function handleAdminMenteesGet(request, env, cors) {
 }
 
 // POST /admin/mentees/adjust {contactId, delta} — protected. Manual +1/-1 to
-// Sessions Left (comping a session, fixing a mistake), clamped to
-// [0, sessionsAllowed].
+// Sessions Left and Current Session (comping a session, fixing a mistake),
+// clamped to [0, sessionsAllowed]. Bookings are tracked by a GHL workflow.
 async function handleAdminMenteeAdjust(request, env, cors) {
   if (!(await requireAdmin(request, env))) return json({ error: "Unauthorized" }, 401, cors);
   let d;
@@ -912,39 +935,15 @@ async function handleAdminMenteeAdjust(request, env, cors) {
   if (!contactId || !delta) return json({ error: "contactId and delta required" }, 400, cors);
 
   const contact = await getContact(env, contactId);
-  const summary = contact && mentorshipSummary(contact);
+  const summary = contact && mentorshipSummary(contact, await getExtraFieldIds(env));
   if (!summary) return json({ error: "Not found" }, 404, cors);
 
+  // Sessions Left and Current Session always move in opposite directions.
   const next = Math.max(0, Math.min(summary.sessionsAllowed, summary.sessionsLeft + delta));
-  const ok = await setSessionsLeft(env, contactId, next);
+  const current = Math.max(0, Math.min(summary.sessionsAllowed, summary.currentSession - (next - summary.sessionsLeft)));
+  const ok = await setSessionCounters(env, contactId, next, current);
   if (!ok) return json({ error: "Couldn't update GHL" }, 502, cors);
-  return json({ ok: true, sessionsLeft: next }, 200, cors);
-}
-
-// POST /webhook/session-booked {contactId} — called by Kerry's "Mentorship
-// call booked" GHL workflow (Appointment Created on the mentorship calendar).
-// Decrements Sessions Left by 1, floored at 0. Guarded by a shared secret
-// (env.MENTORSHIP_WEBHOOK_SECRET) since it's a public endpoint, unlike every
-// other handler here which is gated on Kerry's admin password.
-async function handleSessionBookedWebhook(request, env, cors) {
-  const secret = request.headers.get("X-Webhook-Secret") || "";
-  if (!env.MENTORSHIP_WEBHOOK_SECRET || !safeEqual(secret, env.MENTORSHIP_WEBHOOK_SECRET)) {
-    return json({ error: "Unauthorized" }, 401, cors);
-  }
-  let d;
-  try { d = await request.json(); }
-  catch { return json({ error: "Bad JSON" }, 400, cors); }
-  const contactId = d.contactId;
-  if (!contactId) return json({ error: "contactId required" }, 400, cors);
-
-  const contact = await getContact(env, contactId);
-  const summary = contact && mentorshipSummary(contact);
-  if (!summary) return json({ error: "Not found" }, 404, cors);
-
-  const next = Math.max(0, summary.sessionsLeft - 1);
-  const ok = await setSessionsLeft(env, contactId, next);
-  if (!ok) return json({ error: "Couldn't update GHL" }, 502, cors);
-  return json({ ok: true, sessionsLeft: next }, 200, cors);
+  return json({ ok: true, sessionsLeft: next, currentSession: current }, 200, cors);
 }
 
 // ---------- router ----------
@@ -1060,10 +1059,6 @@ export default {
       return handleAdminMenteeAdjust(request, env, cors);
     }
 
-    // POST /webhook/session-booked — called by the GHL "session booked" workflow
-    if (request.method === "POST" && path === "/webhook/session-booked") {
-      return handleSessionBookedWebhook(request, env, cors);
-    }
 
     // ---- Legacy support: bare POST / (or POST /?form=waitlist) with no
     // /submit path and no ?stage=, from the old worker.js contract. The
