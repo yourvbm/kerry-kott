@@ -280,6 +280,8 @@ const PASSWORD_KV_KEY = "admin:password_hash";
 const RESET_KV_KEY = "admin:reset_token";
 const RESET_TOKEN_TTL_MS = 30 * 60 * 1000;
 const ADMIN_RESET_EMAIL = "kerrykott@gmail.com";
+// Every notification to Kerry (new inquiries) goes here. The password reset stays on the admin address above.
+const NOTIFY_EMAIL = "hello@kerrykott.com";
 const ADMIN_ORIGIN = "https://admin.kerrykott.com";
 
 async function sha256Hex(text) {
@@ -354,7 +356,7 @@ async function emailKerry(env, subject, html) {
     headers: ghlHeaders(env),
     body: JSON.stringify({
       locationId: LOCATION_ID,
-      email: ADMIN_RESET_EMAIL,
+      email: NOTIFY_EMAIL,
       firstName: "Kerry Kott",
       lastName: "(admin account)",
       source: "admin.kerrykott.com notification",
