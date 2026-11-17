@@ -70,6 +70,7 @@ const ALLOWED_ORIGINS = [
   "https://admin.kerrykott.com",
   "https://schedule.kerrykott.com",
   "https://kerry-kott.pages.dev",
+  "https://demo.kerrykott.com",
 ];
 
 function allowed(origin) {
@@ -344,6 +345,84 @@ async function sendResetEmail(env, resetUrl) {
   if (!sendRes.ok) throw new Error(`send ${sendRes.status}`);
 }
 
+
+// Emails Kerry herself (internal notification) through her GHL account, the
+// same way the reset email goes out. Never throws into the caller's flow.
+async function emailKerry(env, subject, html) {
+  const upsertRes = await fetch(`${BASE}/contacts/upsert`, {
+    method: "POST",
+    headers: ghlHeaders(env),
+    body: JSON.stringify({
+      locationId: LOCATION_ID,
+      email: ADMIN_RESET_EMAIL,
+      firstName: "Kerry Kott",
+      lastName: "(admin account)",
+      source: "admin.kerrykott.com notification",
+    }),
+  });
+  if (!upsertRes.ok) throw new Error(`contact upsert ${upsertRes.status}`);
+  const upserted = await upsertRes.json();
+  const kerryId = (upserted.contact && upserted.contact.id) || upserted.id;
+  if (!kerryId) throw new Error("no contact id returned");
+  const sendRes = await fetch(`${BASE}/conversations/messages`, {
+    method: "POST",
+    headers: ghlHeaders(env),
+    body: JSON.stringify({ type: "Email", contactId: kerryId, subject, html }),
+  });
+  if (!sendRes.ok) throw new Error(`send ${sendRes.status}`);
+}
+
+function escHtml(t) {
+  return String(t == null ? "" : t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+}
+
+// Selected options of a field, whether the form sent an array or a joined string.
+function selectedValues(val) {
+  if (Array.isArray(val)) return val.map((v) => String(v).trim()).filter(Boolean);
+  if (typeof val === "string" && val) return val.split(/\s*,\s*/).filter(Boolean);
+  return [];
+}
+
+// A stage field's options may carry a `tag`. Every option the visitor ticked
+// contributes its tag, so each interest is recorded as a tag on the contact.
+function optionTagsFor(stage, d) {
+  const out = [];
+  for (const f of stage.fields || []) {
+    if (!Array.isArray(f.options)) continue;
+    const picked = selectedValues(d[f.id]);
+    for (const o of f.options) {
+      if (o.tag && picked.includes(String(o.value))) out.push(...(Array.isArray(o.tag) ? o.tag : [o.tag]));
+    }
+  }
+  return [...new Set(out)];
+}
+
+// A stage with `notify: true` emails Kerry the submission and adds it to the
+// contact's notes. Best effort: a failed notification never fails the form.
+async function notifyKerry(env, headers, stage, d, contactId, picked) {
+  const lines = [];
+  for (const f of stage.fields || []) {
+    const v = selectedValues(d[f.id]);
+    const shown = Array.isArray(d[f.id]) ? v.join(", ") : (d[f.id] == null ? "" : String(d[f.id]));
+    if (shown) lines.push([f.label, shown]);
+  }
+  const link = `https://app.yourvbm.com/v2/location/${LOCATION_ID}/contacts/detail/${contactId}`;
+  const html = `<div><b>New message from your website</b></div><br>`
+    + lines.map(([k, v]) => `<div><b>${escHtml(k)}:</b> ${escHtml(v)}</div>`).join("")
+    + `<br><div><a href="${link}">Open this contact</a></div>`;
+  const who = (d.first_name || d.firstName || "Someone");
+  const interest = picked.length ? picked.join(", ") : "No interest chosen";
+  try {
+    await fetch(`${BASE}/contacts/${contactId}/notes`, {
+      method: "POST", headers,
+      body: JSON.stringify({ body: `Contact form. Interested in: ${interest}.` }),
+    });
+  } catch (e) { /* note is a convenience */ }
+  try {
+    await emailKerry(env, `New inquiry from ${who}: ${interest}`, html);
+  } catch (e) { /* never block the visitor */ }
+}
+
 // POST /forgot-password — public on purpose (it's how access gets recovered)
 async function handleForgotPassword(env, cors) {
   const token = randomToken();
@@ -479,6 +558,15 @@ async function handleSubmit(request, env, cors, formKey) {
     if (!tagRes.ok) return json({ error: "Tag failed", detail: await tagRes.text() }, 502, cors);
   }
 
+  // One tag per ticked option that carries a `tag` (e.g. each interest).
+  const optTags = optionTagsFor(stage, d);
+  if (optTags.length) {
+    const optRes = await fetch(`${BASE}/contacts/${contactId}/tags`, {
+      method: "POST", headers, body: JSON.stringify({ tags: optTags }),
+    });
+    if (!optRes.ok) return json({ error: "Tag failed", detail: await optRes.text() }, 502, cors);
+  }
+
   // Remove any tags this stage says to remove (e.g. abandoned-cart Started
   // tag once Complete fires).
   if (stage.removeTags && stage.removeTags.length) {
@@ -486,6 +574,12 @@ async function handleSubmit(request, env, cors, formKey) {
       method: "DELETE", headers, body: JSON.stringify({ tags: stage.removeTags }),
     });
     if (!rmRes.ok) return json({ error: "Tag removal failed", detail: await rmRes.text() }, 502, cors);
+  }
+
+  if (stage.notify) {
+    const picked = (stage.fields || []).filter((f) => Array.isArray(f.options) && f.options.some((o) => o.tag))
+      .flatMap((f) => selectedValues(d[f.id]));
+    await notifyKerry(env, headers, stage, d, contactId, picked);
   }
 
   return json({ ok: true, contactId }, 200, cors);

@@ -398,6 +398,15 @@ html,body{margin:0;padding:0;}
       prefill("first_name", "input[name=first_name]");
       prefill("last_name",  "input[name=last_name]");
       prefill("email",      "input[name=email]");
+      /* ?interest=Photography (repeatable or comma-separated) ticks matching boxes, so a card on the site can arrive pre-selected. */
+      var want = [];
+      params.getAll("interest").forEach(function(v){ v.split(",").forEach(function(x){ x = x.trim().toLowerCase(); if(x) want.push(x); }); });
+      if(want.length){
+        form.querySelectorAll("input[type=checkbox]").forEach(function(el){
+          if(want.indexOf(String(el.value).toLowerCase()) !== -1) el.checked = true;
+        });
+        saveState();
+      }
     } catch(e){ /* prefill is best-effort, never block the form */ }
 
     /* Generic conditional-field wiring, driven by each field's showIf. */
