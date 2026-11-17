@@ -71,6 +71,7 @@ const ALLOWED_ORIGINS = [
   "https://schedule.kerrykott.com",
   "https://kerry-kott.pages.dev",
   "https://demo.kerrykott.com",
+  "https://launch.yourvbm.com",
 ];
 
 function allowed(origin) {
@@ -424,6 +425,56 @@ async function notifyKerry(env, headers, stage, d, contactId, picked) {
   try {
     await emailKerry(env, `New inquiry from ${who}: ${interest}`, html);
   } catch (e) { /* never block the visitor */ }
+}
+
+
+// ---------- /guide-feedback ----------
+// The Site & Automation Guide (launch.yourvbm.com/kerrykott) lets Kerry click a
+// line and send Miriam a free-form change request. One email goes TO Miriam and
+// is CC'd to Kerry. Sent through Kerry's own GHL account like the other emails.
+const GUIDE_TO = "miriam@yourvirtualbusinessmanager.com";
+const GUIDE_CC = "hello@kerrykott.com";
+const GUIDE_MAX_PER_HOUR = 12; // coarse cap so a public endpoint cannot flood the inbox
+
+async function handleGuideFeedback(request, env, cors) {
+  let d;
+  try { d = await request.json(); }
+  catch { return json({ error: "Bad JSON" }, 400, cors); }
+  if (d.website) return json({ ok: true }, 200, cors); // honeypot: bots fill this, people never see it
+  const message = String(d.message || "").trim();
+  if (message.length < 3) return json({ error: "Please write a few words about what you would like changed." }, 400, cors);
+  if (message.length > 4000) return json({ error: "That is a little long. Please shorten it." }, 400, cors);
+
+  const hourKey = `guide-fb:${new Date().toISOString().slice(0, 13)}`;
+  const used = parseInt((await env.CONFIG.get(hourKey)) || "0", 10);
+  if (used >= GUIDE_MAX_PER_HOUR) return json({ error: "Too many messages this hour. Please try again a little later." }, 429, cors);
+  await env.CONFIG.put(hourKey, String(used + 1), { expirationTtl: 7200 });
+
+  const clip = (v, n) => String(v || "").trim().slice(0, n);
+  const item = clip(d.item, 200), section = clip(d.section, 80), name = clip(d.name, 80), page = clip(d.page, 300);
+  const rows = [["About", item || "General note"], ["Section", section], ["From", name || "Kerry"]].filter(([, v]) => v);
+  const html = rows.map(([k, v]) => `<div><b>${escHtml(k)}:</b> ${escHtml(v)}</div>`).join("")
+    + `<br><div>${escHtml(message).replace(/\n/g, "<br>")}</div><br>`
+    + (page ? `<div>Sent from <a href="${escHtml(page)}">the Site &amp; Automation Guide</a></div>` : "");
+
+  try {
+    const up = await fetch(`${BASE}/contacts/upsert`, {
+      method: "POST", headers: ghlHeaders(env),
+      body: JSON.stringify({ locationId: LOCATION_ID, email: GUIDE_TO, firstName: "Miriam", lastName: "(YourVBM)", source: "Site guide" }),
+    });
+    if (!up.ok) throw new Error(`contact ${up.status}`);
+    const u = await up.json();
+    const id = (u.contact && u.contact.id) || u.id;
+    if (!id) throw new Error("no contact id");
+    const body = { type: "Email", contactId: id, subject: `Site guide: ${item || "a note"}${name ? " (" + name + ")" : ""}`, html };
+    if (!d.toMeOnly) body.emailCc = [GUIDE_CC]; // toMeOnly is for testing: skips the copy to Kerry
+    const send = await fetch(`${BASE}/conversations/messages`, { method: "POST", headers: ghlHeaders(env), body: JSON.stringify(body) });
+    if (!send.ok) throw new Error(`send ${send.status}`);
+    const out = await send.json().catch(() => ({}));
+    return json({ ok: true, threadId: out.threadId, messageId: out.messageId }, 200, cors);
+  } catch (err) {
+    return json({ error: "Could not send that just now. Please try again, or email Miriam directly." }, 502, cors);
+  }
 }
 
 // POST /forgot-password — public on purpose (it's how access gets recovered)
@@ -1147,6 +1198,11 @@ export default {
     // POST /admin/login
     if (request.method === "POST" && path === "/admin/login") {
       return handleAdminLogin(request, env, cors);
+    }
+
+    // POST /guide-feedback — public, rate limited, emails Miriam and copies Kerry
+    if (request.method === "POST" && path === "/guide-feedback") {
+      return handleGuideFeedback(request, env, cors);
     }
 
     // POST /forgot-password — public (how Kerry recovers access herself)
