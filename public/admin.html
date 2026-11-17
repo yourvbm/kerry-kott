@@ -52,7 +52,8 @@ body{
 #admin-app{max-width:920px;margin:0 auto;padding:32px 20px 100px;}
 .admin-head{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:22px;}
 .admin-head h1{font-family:var(--font-display);font-weight:600;font-size:26px;margin:0;}
-.admin-head .sub{color:var(--muted);font-size:13px;}
+.admin-head .sub{color:var(--muted);font-size:13px;order:3;flex-basis:100%;}
+.admin-head .guide-links{margin-left:auto;}
 #home-link{font:inherit;background:none;border:none;padding:0;margin:0;color:var(--ink);cursor:pointer;}
 #home-link:hover{text-decoration:underline;}
 
@@ -358,6 +359,11 @@ button.guide-link{background:none;cursor:pointer;}
   <img class="kk-logo kk-logo-app" src="https://assets.cdn.filesafe.space/ps7itsG5PeLgg7TDwnGV/media/6a47eac4989afcfcc93100ed.png" alt="Kerry Kott">
   <div class="admin-head">
     <h1><button type="button" id="home-link">🌿 Admin</button></h1>
+    <span class="guide-links">
+      <a class="guide-link" href="https://launch.yourvbm.com/kerrykott" target="_blank" rel="noopener">Site &amp; Automation Guide &#8599;</a>
+      <a class="guide-link" href="https://app.yourvbm.com" target="_blank" rel="noopener">Log In to Your CRM &#8599;</a>
+      <button type="button" id="logout-link" class="guide-link">Log Out</button>
+    </span>
     <div class="sub" id="admin-sub">Edit field labels, options, tags &amp; evergreen copy — no code push needed.</div>
   </div>
 
@@ -365,11 +371,6 @@ button.guide-link{background:none;cursor:pointer;}
     <button type="button" class="tab-btn active" data-section="forms">Forms</button>
     <button type="button" class="tab-btn" data-section="calendars">Calendars</button>
     <button type="button" class="tab-btn" data-section="mentorship">Mentorship</button>
-    <span class="guide-links">
-      <a class="guide-link" href="https://launch.yourvbm.com/kerrykott" target="_blank" rel="noopener">Site &amp; Automation Guide &#8599;</a>
-      <a class="guide-link" href="https://app.yourvbm.com" target="_blank" rel="noopener">Log In to Your CRM &#8599;</a>
-      <button type="button" id="logout-link" class="guide-link">Log Out</button>
-    </span>
   </div>
 
   <div class="tabs" id="tabs" hidden></div>
