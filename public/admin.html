@@ -77,6 +77,9 @@ body{
 }
 .tab-btn.active{color:var(--ink);border-bottom-color:var(--ink);}
 .tab-btn:hover{color:var(--ink);}
+.guide-links{margin-left:auto;align-self:center;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;}
+.guide-link{font-family:var(--font-body);font-size:14px;font-weight:600;color:var(--muted);text-decoration:none;padding:6px 12px;border:1.5px solid var(--border);border-radius:999px;white-space:nowrap;}
+.guide-link:hover{color:var(--ink);border-color:var(--ink);}
 
 .panel-loading{color:var(--muted);padding:30px 0;}
 .panel-error{color:var(--accent);padding:16px;background:#fdf1ef;border-radius:10px;margin-bottom:16px;white-space:pre-wrap;}
@@ -362,6 +365,10 @@ body{
     <button type="button" class="tab-btn active" data-section="forms">Forms</button>
     <button type="button" class="tab-btn" data-section="calendars">Calendars</button>
     <button type="button" class="tab-btn" data-section="mentorship">Mentorship</button>
+    <span class="guide-links">
+      <a class="guide-link" href="https://launch.yourvbm.com/kerrykott" target="_blank" rel="noopener">Site &amp; Automation Guide &#8599;</a>
+      <a class="guide-link" href="https://app.yourvbm.com" target="_blank" rel="noopener">Log In to Your CRM &#8599;</a>
+    </span>
   </div>
 
   <div class="tabs" id="tabs" hidden></div>
