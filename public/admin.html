@@ -79,6 +79,7 @@ body{
 .tab-btn:hover{color:var(--ink);}
 .guide-links{margin-left:auto;align-self:center;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;}
 .guide-link{font-family:var(--font-body);font-size:14px;font-weight:600;color:var(--muted);text-decoration:none;padding:6px 12px;border:1.5px solid var(--border);border-radius:999px;white-space:nowrap;}
+button.guide-link{background:none;cursor:pointer;}
 .guide-link:hover{color:var(--ink);border-color:var(--ink);}
 
 .panel-loading{color:var(--muted);padding:30px 0;}
@@ -358,7 +359,6 @@ body{
   <div class="admin-head">
     <h1><button type="button" id="home-link">🌿 Admin</button></h1>
     <div class="sub" id="admin-sub">Edit field labels, options, tags &amp; evergreen copy — no code push needed.</div>
-    <button type="button" id="logout-link" class="home-card-delete" style="margin:0;">Log out</button>
   </div>
 
   <div class="tabs" id="section-tabs">
@@ -368,6 +368,7 @@ body{
     <span class="guide-links">
       <a class="guide-link" href="https://launch.yourvbm.com/kerrykott" target="_blank" rel="noopener">Site &amp; Automation Guide &#8599;</a>
       <a class="guide-link" href="https://app.yourvbm.com" target="_blank" rel="noopener">Log In to Your CRM &#8599;</a>
+      <button type="button" id="logout-link" class="guide-link">Log Out</button>
     </span>
   </div>
 
