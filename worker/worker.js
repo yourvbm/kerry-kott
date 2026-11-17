@@ -411,11 +411,12 @@ async function notifyKerry(env, headers, stage, d, contactId, picked) {
     + lines.map(([k, v]) => `<div><b>${escHtml(k)}:</b> ${escHtml(v)}</div>`).join("")
     + `<br><div><a href="${link}">Open this contact</a></div>`;
   const who = (d.first_name || d.firstName || "Someone");
-  const interest = picked.length ? picked.join(", ") : "No interest chosen";
+  const interest = picked.length ? picked.join(", ") : (stage.interestLabel || "No interest chosen");
+  const noteLines = lines.map(([k, v]) => `${k}: ${v}`).join("\n");
   try {
     await fetch(`${BASE}/contacts/${contactId}/notes`, {
       method: "POST", headers,
-      body: JSON.stringify({ body: `Contact form. Interested in: ${interest}.` }),
+      body: JSON.stringify({ body: `${stage.noteLabel || "Contact form"}. Interested in: ${interest}.\n${noteLines}` }),
     });
   } catch (e) { /* note is a convenience */ }
   try {
