@@ -451,8 +451,8 @@ async function handleGuideFeedback(request, env, cors) {
   await env.CONFIG.put(hourKey, String(used + 1), { expirationTtl: 7200 });
 
   const clip = (v, n) => String(v || "").trim().slice(0, n);
-  const item = clip(d.item, 200), section = clip(d.section, 80), name = clip(d.name, 80), page = clip(d.page, 300);
-  const rows = [["About", item || "General note"], ["Section", section], ["From", name || "Kerry"]].filter(([, v]) => v);
+  const item = clip(d.item, 200), section = clip(d.section, 80), page = clip(d.page, 300);
+  const rows = [["About", item || "General note"], ["Section", section], ["From", "Kerry"]].filter(([, v]) => v);
   const html = rows.map(([k, v]) => `<div><b>${escHtml(k)}:</b> ${escHtml(v)}</div>`).join("")
     + `<br><div>${escHtml(message).replace(/\n/g, "<br>")}</div><br>`
     + (page ? `<div>Sent from <a href="${escHtml(page)}">the Site &amp; Automation Guide</a></div>` : "");
@@ -466,7 +466,7 @@ async function handleGuideFeedback(request, env, cors) {
     const u = await up.json();
     const id = (u.contact && u.contact.id) || u.id;
     if (!id) throw new Error("no contact id");
-    const body = { type: "Email", contactId: id, subject: `Site guide: ${item || "a note"}${name ? " (" + name + ")" : ""}`, html };
+    const body = { type: "Email", contactId: id, subject: `Site guide: ${item || "a note"}`, html };
     if (!d.toMeOnly) body.emailCc = [GUIDE_CC]; // toMeOnly is for testing: skips the copy to Kerry
     const send = await fetch(`${BASE}/conversations/messages`, { method: "POST", headers: ghlHeaders(env), body: JSON.stringify(body) });
     if (!send.ok) throw new Error(`send ${send.status}`);
